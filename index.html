@@ -1,0 +1,1756 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CSP App Ship Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+:root {
+  --color-fg: #1d1f24; --color-fg-muted: #5f6470; --color-bg: #f4f5f7; --color-panel: #ffffff; --color-border-line: #e1e4ea;
+  --color-ok: #17804a; --color-warn: #a86a00; --color-bad: #c2362b;
+  --c0: #2f6fdb; --c1: #d9772b; --c2: #2c9c8c; --c3: #8a5cd6; --c4: #c44f8f;
+  --font-anthropic-sans: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; --font-anthropic-serif: "Source Serif 4", Georgia, serif;
+  --cds-font-size-caption: 12px; --cds-font-size-body: 14px; --cds-font-size-heading: 18px; --cds-font-size-title: 30px; --cds-font-weight-medium: 600;
+  --cds-gap-xs: 4px; --cds-gap-sm: 8px; --cds-gap-md: 14px; --cds-gap-lg: 20px; --cds-gap-xl: 28px;
+  --cds-pad-xs: 4px; --cds-pad-sm: 8px; --cds-pad-md: 12px; --cds-pad-lg: 16px; --cds-pad-xl: 24px; --cds-radius: 8px;
+  --cds-chart-muted: #b6bcc8; --cds-chart-grid: #eceef2; --cds-chart-axis: #c9ced8; --cds-chart-reference: #7d8594; --cds-chart-status-critical: #c2362b;
+  --cds-text-secondary: #5f6470; --cds-surface-popover: #ffffff; --cds-border: #e1e4ea; --cds-shadow-popover: 0 6px 24px rgba(20,24,33,.12);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --color-fg: #e8eaee; --color-fg-muted: #a2a8b4; --color-bg: #121418; --color-panel: #1b1e24; --color-border-line: #2c3139;
+  --color-ok: #4cc38a; --color-warn: #e0a640; --color-bad: #f0776d;
+  --c0: #6b9cf0; --c1: #f0a05f; --c2: #4fc2b1; --c3: #ad8cf0; --c4: #e47cb4;
+  --cds-chart-muted: #59606c; --cds-chart-grid: #23272e; --cds-chart-axis: #3a404a; --cds-chart-reference: #8b93a1; --cds-chart-status-critical: #f0776d;
+  --cds-text-secondary: #a2a8b4; --cds-surface-popover: #1f232a; --cds-border: #2c3139; --cds-shadow-popover: 0 6px 24px rgba(0,0,0,.5);
+  color-scheme: dark;
+} }
+html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); font: 14px/1.45 var(--font-anthropic-sans); }
+#dash-root { max-width: 1320px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); }
+.dash-select { font: inherit; font-size: 14px; color: var(--color-fg); background-color: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: 8px; padding: 6px 30px 6px 10px; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; max-width: 100%; }
+.site-bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; font-size: 12px; color: var(--color-fg-muted); margin-bottom: 12px; }
+#tab-manage, #manage { display: none !important; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="shim.js"></script>
+</head>
+<body>
+<div id="dash-root">
+<div class="site-bar"><span>Read-only copy, refreshed daily at 03:00 IST · data as of <b data-asof>—</b></span><span>Edit releases and targets in the repo (framework/store) or the claude.ai dashboard</span></div>
+<style>
+.at { display: grid; gap: var(--cds-gap-xl); font-family: var(--font-anthropic-sans); color: var(--color-fg); }
+.at h1 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0; text-wrap: balance; }
+.at h2 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0; text-wrap: balance; }
+.at h3 { font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); margin: 0; }
+.at p { margin: 0; line-height: 1.5; max-width: 78ch; }
+.at .muted { color: var(--color-fg-muted); }
+.at .cap { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.at .eyebrow { font-size: var(--cds-font-size-caption); letter-spacing: .06em; text-transform: uppercase; color: var(--color-fg-muted); }
+.at .head { display: grid; gap: var(--cds-gap-sm); }
+.at section.tab { display: grid; gap: var(--cds-gap-lg); }
+.at .tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--color-border-line); }
+.at .tabs button { font: inherit; background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 12px; color: var(--color-fg-muted); cursor: pointer; }
+.at .tabs button[aria-selected="true"] { color: var(--color-fg); border-bottom-color: var(--color-fg); font-weight: var(--cds-font-weight-medium); }
+.at .tabs button:focus-visible { outline: 2px solid var(--color-fg-muted); outline-offset: -2px; }
+.at .card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-md); min-width: 0; align-content: start; }
+.at .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--cds-gap-md); }
+.at .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--cds-gap-md); }
+.at .tile { display: grid; gap: 4px; align-content: start; }
+.at .big { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: 2rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.at .scroll { overflow-x: auto; }
+.at table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.at th, .at td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; vertical-align: top; }
+.at th:first-child, .at td:first-child { text-align: left; }
+.at th { font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.at .l { text-align: left; }
+.at td.wrap { white-space: normal; min-width: 180px; }
+.at td.def { white-space: normal; min-width: 260px; max-width: 420px; color: var(--color-fg-muted); text-align: left; }
+.at tr.group td { font-size: var(--cds-font-size-caption); letter-spacing: .05em; text-transform: uppercase; color: var(--color-fg-muted); padding-top: 14px; }
+.at tr.pick { cursor: pointer; }
+.at tr.pick:hover td, .at tr.sel td { background: var(--color-bg); }
+.at tr.sel td:first-child { font-weight: var(--cds-font-weight-medium); }
+.at tr.pick:focus-visible { outline: 2px solid var(--color-fg-muted); outline-offset: -2px; }
+.at .pill { display: inline-block; font-size: var(--cds-font-size-caption); padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.at .ok { color: var(--color-ok); } .at .warn { color: var(--color-warn); } .at .bad { color: var(--color-bad); }
+.at .tag { font-size: var(--cds-font-size-caption); padding: 1px 6px; border-radius: 4px; border: 1px solid var(--color-border-line); color: var(--color-fg-muted); white-space: nowrap; }
+.at .kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px var(--cds-gap-md); margin: 0; }
+.at .kv dt { color: var(--color-fg-muted); } .at .kv dd { margin: 0; min-width: 0; }
+.at .chart { position: relative; min-height: 260px; }
+.at .timeline { position: relative; min-height: 90px; }
+.at .funnel { position: relative; min-height: 190px; }
+.at .tree { position: relative; min-height: 240px; }
+.at .tip { position: absolute; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); box-shadow: var(--cds-shadow-popover); border-radius: var(--cds-radius); padding: 6px 10px; font-size: var(--cds-font-size-caption); white-space: nowrap; z-index: 2; color: var(--color-fg); }
+.at svg text { fill: var(--cds-text-secondary); font-size: 11px; font-family: var(--font-anthropic-sans); }
+.at .legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); align-items: center; }
+.at .sw { display: inline-block; width: 14px; height: 3px; margin-right: 6px; vertical-align: 3px; }
+.at .row { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: center; }
+.at .between { justify-content: space-between; }
+.at .picker { padding: var(--cds-pad-sm) 0; }
+.at .qgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--cds-gap-md); }
+.at .rl-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--cds-gap-sm); }
+.at .rl-stat { all: unset; box-sizing: border-box; cursor: pointer; display: grid; gap: 2px; padding: var(--cds-pad-md) var(--cds-pad-lg); border-radius: var(--cds-radius); border: 1px solid var(--color-border-line); background: var(--color-panel); }
+.at .rl-stat:hover { border-color: var(--color-fg-muted); }
+.at .rl-stat:focus-visible { outline: 2px solid var(--color-fg-muted); outline-offset: 2px; }
+.at .rl-stat[aria-pressed="true"] { border-color: var(--color-fg); box-shadow: inset 0 0 0 1px var(--color-fg); }
+.at .rl-stat .n { font-family: var(--font-anthropic-serif); font-size: 1.9rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.at .rl-stat .t { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.at .rl-tools { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm) var(--cds-gap-md); align-items: center; justify-content: space-between; }
+.at .rl-search { flex: 1 1 240px; max-width: 420px; position: relative; }
+.at .rl-search input { width: 100%; box-sizing: border-box; padding-left: 32px; }
+.at .rl-search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; stroke: var(--color-fg-muted); fill: none; stroke-width: 2; pointer-events: none; }
+.at .rl-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.at .rl-chip { all: unset; cursor: pointer; font-size: var(--cds-font-size-caption); padding: 4px 12px; border-radius: 999px; border: 1px solid var(--color-border-line); color: var(--color-fg-muted); background: var(--color-panel); }
+.at .rl-chip[aria-pressed="true"] { color: var(--color-bg); background: var(--color-fg); border-color: var(--color-fg); }
+.at .rl-chip:focus-visible { outline: 2px solid var(--color-fg-muted); outline-offset: 2px; }
+.at .rl-chip .c { opacity: .7; margin-left: 4px; font-variant-numeric: tabular-nums; }
+.at .rl-sort { display: flex; gap: 8px; align-items: center; }
+.at .rl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: var(--cds-gap-md); }
+.at .rc { position: relative; display: grid; gap: 14px; align-content: start; padding: var(--cds-pad-lg); border-radius: calc(var(--cds-radius) + 4px); border: 1px solid var(--color-border-line); background: var(--color-panel); cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; }
+.at .rc:hover { border-color: var(--color-fg-muted); box-shadow: var(--cds-shadow-popover); }
+@media (prefers-reduced-motion: no-preference) { .at .rc:hover { transform: translateY(-2px); } }
+.at .rc:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+.at .rc.is-sel { border-color: var(--color-fg); }
+.at .rc-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.at .rc-area { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--color-fg-muted); }
+.at .rc-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--color-border-line); }
+.at .rc-day { margin-left: auto; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+.at .rc-name { margin: 0; font-size: 1.05rem; line-height: 1.3; font-weight: var(--cds-font-weight-medium); text-wrap: balance; }
+.at .rc-owner { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin-top: -8px; }
+.at .rc-ns { display: grid; gap: 4px; padding: 12px 14px; border-radius: var(--cds-radius); background: var(--color-bg); }
+.at .rc-ns-label { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.at .rc-ns-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.at .rc-big { font-family: var(--font-anthropic-serif); font-size: 2.2rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.at .rc-delta { font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); font-variant-numeric: tabular-nums; }
+.at .rc-sub { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.at .rc-spark { height: 44px; margin-top: 4px; }
+.at .rc-track { display: grid; gap: 6px; }
+.at .rc-track-bar { position: relative; height: 6px; border-radius: 999px; background: var(--color-bg); border: 1px solid var(--color-border-line); }
+.at .rc-track-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; }
+.at .rc-tick { position: absolute; top: -4px; width: 2px; height: 12px; background: var(--color-fg-muted); border-radius: 1px; }
+.at .rc-wave { position: absolute; top: -9px; width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid var(--color-fg); transform: translateX(-4px); }
+.at .rc-track-lbl { display: flex; justify-content: space-between; font-size: 11px; color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+.at .rc-meters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.at .rc-m { display: grid; gap: 4px; }
+.at .rc-m .k { font-size: 11px; color: var(--color-fg-muted); }
+.at .rc-m .v { font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); font-variant-numeric: tabular-nums; }
+.at .rc-m .bar { height: 4px; border-radius: 999px; background: var(--color-bg); overflow: hidden; }
+.at .rc-m .bar i { display: block; height: 100%; border-radius: 999px; }
+.at .rc-foot { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--color-border-line); font-size: var(--cds-font-size-caption); }
+.at .rc-foot .row2 { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; }
+.at .rc-flags { display: flex; gap: 6px; flex-wrap: wrap; }
+.at .rc-flag { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--color-border-line); color: var(--color-fg-muted); font-size: 11px; }
+.at .rc-flag.yes { color: var(--color-ok); border-color: currentColor; }
+.at .rc-flag.no { color: var(--color-warn); border-color: currentColor; }
+.at .rc-open { font-weight: var(--cds-font-weight-medium); white-space: nowrap; }
+.at .rl-empty { padding: var(--cds-pad-xl); text-align: center; color: var(--color-fg-muted); border: 1px dashed var(--color-border-line); border-radius: var(--cds-radius); }
+.at details.rl-more > summary { cursor: pointer; font-weight: var(--cds-font-weight-medium); padding: 4px 0; }
+.at .rw { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: var(--cds-gap-lg); align-items: start; }
+.at .rw-side { position: sticky; top: env(safe-area-inset-top, 0px); display: grid; gap: var(--cds-gap-sm); max-height: calc(100vh - 24px); overflow: auto; padding: var(--cds-pad-md); border: 1px solid var(--color-border-line); border-radius: calc(var(--cds-radius) + 4px); background: var(--color-panel); }
+.at .rw-side-head { display: grid; gap: 8px; }
+.at .rw-side .rl-search { max-width: none; flex: none; }
+.at .rw-list { display: grid; gap: 2px; }
+.at .rw-group { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--color-fg-muted); padding: 10px 8px 4px; }
+.at .rw-item { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 10px 1fr; gap: 2px 10px; align-items: baseline; padding: 10px 10px; border-radius: var(--cds-radius); border: 1px solid transparent; }
+.at .rw-item:hover { background: var(--color-bg); }
+.at .rw-item:focus-visible { outline: 2px solid var(--color-fg-muted); outline-offset: -2px; }
+.at .rw-item[aria-current="true"] { background: var(--color-bg); border-color: var(--color-fg); }
+.at .rw-dot { width: 8px; height: 8px; border-radius: 50%; align-self: center; }
+.at .rw-dot.below { background: var(--color-bad); } .at .rw-dot.on { background: var(--color-ok); } .at .rw-dot.waiting { background: var(--color-warn); }
+.at .rw-name { font-size: var(--cds-font-size-body); line-height: 1.3; font-weight: var(--cds-font-weight-medium); }
+.at .rw-meta { grid-column: 2; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+.at .rw-main { display: grid; gap: var(--cds-gap-md); min-width: 0; }
+.at .rw-mobile { display: none; gap: 6px; align-items: center; }
+.at .rw-head { display: grid; gap: 8px; padding: var(--cds-pad-lg); border: 1px solid var(--color-border-line); border-radius: calc(var(--cds-radius) + 4px); background: var(--color-panel); }
+.at .rw-title { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: 1.6rem; line-height: 1.2; }
+.at .rw-headrow { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; }
+.at .rw-links { display: flex; flex-wrap: wrap; gap: 6px; }
+.at .rw-link { font-size: var(--cds-font-size-caption); padding: 3px 10px; border-radius: 999px; border: 1px solid var(--color-border-line); color: var(--color-fg); text-decoration: none; }
+.at .rw-link:hover { border-color: var(--color-fg-muted); }
+.at .rw-wave { display: flex; gap: 8px; align-items: center; }
+.at .subtabs { display: flex; gap: 4px; flex-wrap: wrap; padding: 4px; border-radius: 999px; background: var(--color-panel); border: 1px solid var(--color-border-line); width: fit-content; max-width: 100%; }
+.at .subtabs button { all: unset; cursor: pointer; padding: 6px 14px; border-radius: 999px; font-size: var(--cds-font-size-body); color: var(--color-fg-muted); }
+.at .subtabs button[aria-selected="true"] { background: var(--color-fg); color: var(--color-bg); }
+.at .subtabs button:focus-visible { outline: 2px solid var(--color-fg-muted); outline-offset: 2px; }
+.at .sub { display: grid; gap: var(--cds-gap-md); }
+.at .att { display: grid; gap: 8px; }
+.at .att-row { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 12px; border-radius: var(--cds-radius); background: var(--color-bg); }
+.at .att-row:hover { box-shadow: inset 0 0 0 1px var(--color-border-line); }
+.at .att-row .nm { font-weight: var(--cds-font-weight-medium); }
+.at .att-row .vl { font-variant-numeric: tabular-nums; text-align: right; }
+.at .att-row .gp { grid-column: 1 / -1; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+@media (max-width: 760px) {
+  .at .rw { grid-template-columns: minmax(0, 1fr); }
+  .at .rw-side { display: none; }
+  .at .rw-mobile { display: flex; }
+}
+.at .clog { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; }
+.at .clog b { font-weight: var(--cds-font-weight-medium); font-variant-numeric: tabular-nums; }
+.at a.lnk { color: inherit; text-decoration: underline; text-underline-offset: 2px; word-break: break-all; }
+.at .q { border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md); display: grid; gap: 8px; align-content: start; background: var(--color-bg); }
+.at .q h4 { margin: 0; font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); }
+.at .q .mrow { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: baseline; font-variant-numeric: tabular-nums; }
+.at .q .mrow .v { font-weight: var(--cds-font-weight-medium); }
+.at .picker select { min-width: 260px; max-width: 100%; }
+.at button.open { font: inherit; font-size: var(--cds-font-size-caption); padding: 2px 10px; border-radius: 999px; border: 1px solid var(--color-fg-muted); background-color: var(--color-bg); color: var(--color-fg); cursor: pointer; white-space: nowrap; }
+.at ol.steps, .at ul.list { margin: 0; padding-left: 1.3em; display: grid; gap: 8px; line-height: 1.5; max-width: 80ch; }
+.at .lifecycle { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--cds-gap-sm); }
+.at .phase { border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md); display: grid; gap: 4px; align-content: start; }
+.at .phase b { font-weight: var(--cds-font-weight-medium); }
+.at form { display: grid; gap: var(--cds-gap-md); }
+.at .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--cds-gap-md); }
+.at label { display: grid; gap: 4px; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.at input, .at textarea { font: inherit; font-size: var(--cds-font-size-body); color: var(--color-fg); background-color: var(--color-bg); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 6px 8px; min-width: 0; }
+.at textarea { min-height: 3.2em; resize: vertical; }
+.at .tgt input { width: 5.5em; text-align: right; }
+.at button.btn { font: inherit; font-size: var(--cds-font-size-body); padding: 6px 14px; border-radius: var(--cds-radius); border: 1px solid var(--color-border-line); background-color: var(--color-bg); color: var(--color-fg); cursor: pointer; }
+.at button.primary { border-color: var(--color-fg-muted); font-weight: var(--cds-font-weight-medium); }
+.at button.btn:focus-visible, .at input:focus-visible, .at textarea:focus-visible { outline: 2px solid var(--color-fg-muted); outline-offset: 1px; }
+.at details.card > summary { cursor: pointer; font-weight: var(--cds-font-weight-medium); }
+</style>
+
+<div class="at">
+  <header class="head" id="top">
+    <div class="eyebrow">Adoption team · CSP app · every release, every metric</div>
+    <h1>CSP App Ship Tracker</h1>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button type="button" role="tab" id="tab-releases" aria-controls="releases" aria-selected="true">Overview · all releases</button>
+    <button type="button" role="tab" id="tab-release" aria-controls="release" aria-selected="false">Release</button>
+    <button type="button" role="tab" id="tab-framework" aria-controls="framework" aria-selected="false">Framework</button>
+    <button type="button" role="tab" id="tab-manage" aria-controls="manage" aria-selected="false">Manage</button>
+  </nav>
+
+  <section class="tab" id="releases" role="tabpanel" aria-labelledby="tab-releases">
+    <p id="takeaway" class="muted"><b data-draw="tk-count">—</b> releases tracked against <b data-draw="tk-metrics">—</b> catalog metrics. <span data-draw="tk-below">—</span> Open any card to see that release on its own.</p>
+    <div class="rl-summary" data-draw="rel-summary" data-source="release_board" aria-label="Release counts by status; choose one to filter"></div>
+
+    <div class="rl-tools" id="rl-tools">
+      <label class="rl-search" for="rl-q">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+        <input id="rl-q" type="search" placeholder="Search releases, owners, Linear IDs" aria-label="Search releases">
+      </label>
+      <div class="rl-sort">
+        <label class="cap" for="rl-sort-sel">Sort</label>
+        <select id="rl-sort-sel" class="dash-select" aria-label="Sort releases">
+          <option value="attention">Needs attention first</option>
+          <option value="newest">Newest launch first</option>
+          <option value="oldest">Oldest launch first</option>
+          <option value="name">Name</option>
+        </select>
+      </div>
+    </div>
+    <div class="rl-chips" data-draw="area-chips" aria-label="Filter by app area"></div>
+
+    <div class="rl-grid" id="release-cards" data-draw="release-cards" data-source="release_board"></div>
+
+    <div class="card" id="timeline-card">
+      <div class="head">
+        <h2>Release timeline</h2>
+        <p class="cap">Each bar runs from Day 0 to the Day 30 review, with ticks at Day 0, Day 7 and Day 30. Triangles mark rollout waves, circles mark logged changes, the dashed line is the latest data day. Pick a bar to open the release.</p>
+      </div>
+      <div class="timeline" data-draw="timeline" data-source="release_board" role="img" aria-label="Timeline of releases from launch to Day 30 review"></div>
+    </div>
+
+    <details class="card rl-more" id="board-card">
+      <summary>Weekly health report card as a table</summary>
+      <div class="scroll">
+        <table id="release-board" data-source="release_board" data-row-key="id">
+          <thead><tr>
+            <th data-field="name">Release</th>
+            <th class="l">See data</th>
+            <th data-field="app" class="l">App area</th>
+            <th data-field="phase" class="l">Phase</th>
+            <th data-field="rollout" class="l">Rollout</th>
+            <th data-field="launch" class="l">Day 0</th>
+            <th data-field="d7_date" class="l">Day 7 review</th>
+            <th data-field="d30_date" class="l">Day 30 review</th>
+            <th data-field="ns_name" class="l">North star</th>
+            <th data-field="ns_value">Last 7 days</th>
+            <th data-field="ns_baseline">Baseline</th>
+            <th data-field="target">Target now</th>
+            <th data-field="unaided">Adoption goal: completed unaided</th>
+            <th data-field="leading_ok">Leading on target</th>
+            <th data-field="lagging_ok">Lagging on target</th>
+            <th data-field="design_ok">Design on target</th>
+            <th data-field="drop" class="l">Biggest drop-off</th>
+            <th data-field="owner" class="l">Owner</th>
+            <th data-field="support" class="l">Support ready</th>
+          </tr></thead>
+          <tbody data-draw="board-rows"></tbody>
+        </table>
+      </div>
+      <p class="cap">Each release's north star comes from its objective; completed unaided (at least 90% by Day 30) is the adoption goal every release must also meet. “On target” compares each metric's last 7 complete days with the target for the release's current phase.</p>
+    </details>
+  </section>
+
+  <section class="tab" id="release" role="tabpanel" aria-labelledby="tab-release" hidden>
+    <div class="rw">
+      <aside class="rw-side" aria-label="Choose a release">
+        <div class="rw-side-head">
+          <span class="eyebrow">Releases</span>
+          <label class="rl-search" for="rw-q">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+            <input id="rw-q" type="search" placeholder="Find a release" aria-label="Find a release">
+          </label>
+        </div>
+        <nav class="rw-list" data-draw="rel-list" data-source="release_board"></nav>
+      </aside>
+
+      <div class="rw-main">
+        <div class="rw-mobile">
+          <label class="cap" for="rw-mobile-sel">Release</label>
+          <select id="rw-mobile-sel" class="dash-select" data-draw="release-pick" aria-label="Choose a release"></select>
+        </div>
+
+        <div class="rw-head" id="rw-head">
+          <div class="rc-top" data-draw="rw-top"></div>
+          <h2 class="rw-title" data-draw="r-title">—</h2>
+          <p class="muted" data-draw="r-dates">—</p>
+          <div class="rw-headrow">
+            <div class="rw-links" data-draw="rw-links"></div>
+            <label class="rw-wave" for="wave-pick-sel"><span class="cap">Show data for</span><select id="wave-pick-sel" class="dash-select" data-draw="wave-pick" aria-label="Choose all waves or one rollout wave"></select></label>
+          </div>
+        </div>
+
+        <nav class="subtabs" role="tablist" aria-label="Release sections">
+          <button type="button" role="tab" id="st-summary" aria-selected="true">Summary</button>
+          <button type="button" role="tab" id="st-metrics" aria-selected="false">Metrics</button>
+          <button type="button" role="tab" id="st-trend" aria-selected="false">Funnel &amp; trend</button>
+          <button type="button" role="tab" id="st-rollout" aria-selected="false">Rollout &amp; changes</button>
+          <button type="button" role="tab" id="st-brief" aria-selected="false">Brief</button>
+        </nav>
+
+        <div class="sub" id="rs-summary" role="tabpanel" aria-labelledby="st-summary">
+          <div class="tiles">
+            <div class="card tile" id="tile-ns-card"><span class="cap" data-draw="tile-ns-name">—</span><span class="big" data-draw="tile-ns">—</span><span class="cap" data-draw="tile-ns-sub">—</span></div>
+            <div class="card tile" id="tile-ag-card"><span class="cap">Adoption goal · completed unaided</span><span class="big" data-draw="tile-ag">—</span><span class="cap" data-draw="tile-ag-sub">—</span></div>
+            <div class="card tile" id="tile-lead-card"><span class="cap">Leading on target</span><span class="big" data-draw="tile-lead">—</span><span class="cap">Early signals, Day 0–7</span></div>
+            <div class="card tile" id="tile-des-card"><span class="cap">Design on target</span><span class="big" data-draw="tile-des">—</span><span class="cap">Can CSPs do it on their own</span></div>
+            <div class="card tile" id="tile-spec-card"><span class="cap">Spec items tracked</span><span class="big" data-draw="tile-spec">—</span><span class="cap">From PRDs, design specs and event plans</span></div>
+            <div class="card tile" id="tile-lag-card"><span class="cap">Lagging on target</span><span class="big" data-draw="tile-lag">—</span><span class="cap">Outcomes, Day 7–30 and after</span></div>
+          </div>
+          <div class="grid2">
+            <div class="card" id="attention-card">
+              <h3>Needs attention</h3>
+              <div class="att" data-draw="attention" data-source="release_scorecard"></div>
+            </div>
+            <div class="card" id="fixing">
+              <h3>Biggest drop-off and who is fixing it</h3>
+              <p data-draw="r-drop">—</p>
+              <dl class="kv">
+                <dt>Fixing</dt><dd data-draw="r-fix-owner">—</dd>
+                <dt>Plan</dt><dd data-draw="r-fix-plan">—</dd>
+              </dl>
+            </div>
+          </div>
+          <div class="card" id="design-card">
+            <div class="head">
+              <div class="eyebrow">Design lens</div>
+              <h3>Can CSPs use it on their own?</h3>
+              <p class="cap">Each block answers one design question with its metrics over the last 7 complete days, against the target for this phase.</p>
+            </div>
+            <div class="qgrid" data-draw="design-blocks" data-source="release_scorecard"></div>
+          </div>
+        </div>
+
+        <div class="sub" id="rs-metrics" role="tabpanel" aria-labelledby="st-metrics" hidden>
+          <div class="card scroll" id="spec-card">
+            <div class="head">
+              <h3>From the PRD and design specs</h3>
+              <p class="cap">Every success metric, guardrail and measurement question the release's PRDs, design specs and event plan define, with the target and who set it. “Not tracked yet” says what data is missing.</p>
+            </div>
+            <table id="spec-table" data-source="spec" data-row-key="id">
+              <thead><tr>
+                <th data-field="item">ID</th>
+                <th data-field="title" class="l">What the spec asks</th>
+                <th data-field="kind" class="l">Kind</th>
+                <th data-field="target_text" class="l">Target · set by</th>
+                <th data-field="spec_baseline" class="l">Spec baseline</th>
+                <th class="l">Now</th>
+                <th data-field="source" class="l">Source</th>
+              </tr></thead>
+              <tbody data-draw="spec-rows"></tbody>
+            </table>
+          </div>
+          <div class="card scroll" id="scorecard-card">
+            <div class="row between">
+              <h3>Scorecard</h3>
+              <div class="rl-chips" data-draw="metric-filter" aria-label="Filter metrics"></div>
+            </div>
+            <table id="scorecard" data-source="release_scorecard" data-row-key="key">
+              <thead><tr>
+                <th data-field="name">Metric</th>
+                <th data-field="stage" class="l">Stage</th>
+                <th data-field="question" class="l">Design question</th>
+                <th data-field="baseline">Baseline</th>
+                <th data-field="d0">Day 0</th>
+                <th data-field="d7">Day 7</th>
+                <th data-field="d30">Day 30</th>
+                <th data-field="last7">Last 7 days</th>
+                <th data-field="target_now">Target now</th>
+                <th data-field="status" class="l">Status</th>
+              </tr></thead>
+              <tbody data-draw="score-rows"></tbody>
+            </table>
+            <p class="cap">Day 0 = launch day (or the wave's start). Day 7 and Day 30 = users who reached the release in the 7 days up to that day. A metric is judged only once its window has passed. Targets come from the catalog unless the release sets its own, marked “release”.</p>
+          </div>
+        </div>
+
+        <div class="sub" id="rs-trend" role="tabpanel" aria-labelledby="st-trend" hidden>
+          <div class="grid2">
+            <div class="card" id="funnel-card">
+              <h3>Funnel, last 7 complete days · all waves</h3>
+              <div class="funnel" data-draw="funnel" data-source="release_funnel" role="img" aria-label="Step funnel for the selected release"></div>
+              <p class="cap">Bar = this release, line = baseline. Right: helpline calls per 1,000 users who reached the step, where tracked.</p>
+            </div>
+            <div class="card" id="trend-card">
+              <div class="row between">
+                <h3>Any metric, day by day</h3>
+                <select class="dash-select" data-draw="metric-pick" aria-label="Metric to chart"></select>
+              </div>
+              <div class="legend"><span><i class="sw" data-draw="sw-rel"></i>This release</span><span><i class="sw" data-draw="sw-base"></i>Baseline</span><span>Dashed = Day 30 target · hollow dot = window not passed yet</span></div>
+              <div class="chart" data-draw="trend" data-source="release_daily" role="img" aria-label="Chosen metric by day for the release and its baseline"></div>
+            </div>
+          </div>
+          <div class="card scroll" id="daily-card">
+            <h3>Daily, every metric</h3>
+            <table id="daily" data-source="release_daily" data-row-key="key">
+              <thead data-draw="daily-head"></thead>
+              <tbody data-draw="daily-rows"></tbody>
+            </table>
+            <p class="cap">Grey values are still inside their metric's window and will change.</p>
+          </div>
+        </div>
+
+        <div class="sub" id="rs-rollout" role="tabpanel" aria-labelledby="st-rollout" hidden>
+          <div class="card scroll" id="waves-card">
+            <h3>Rollout waves</h3>
+            <table id="waves-table" data-source="release_scorecard" data-row-key="key">
+              <thead><tr>
+                <th data-field="group_label">Wave</th>
+                <th data-field="group_start" class="l">Wave Day 0</th>
+                <th class="l">CSPs enabled</th>
+                <th data-field="group_day">Day now</th>
+                <th data-field="last7">North star, last 7 days</th>
+                <th data-field="target_now">Target now</th>
+                <th data-field="status" class="l">Status</th>
+              </tr></thead>
+              <tbody data-draw="wave-rows"></tbody>
+            </table>
+            <p class="cap">Each wave has its own Day 0, 7 and 30, counted from the day its CSPs were switched on. Pick a wave to see every section for that wave only.</p>
+          </div>
+          <div class="card" id="changelog-card">
+            <h3>Change log</h3>
+            <div data-draw="r-changelog">—</div>
+          </div>
+        </div>
+
+        <div class="sub" id="rs-brief" role="tabpanel" aria-labelledby="st-brief" hidden>
+          <div class="card" id="brief">
+            <h3>Release brief</h3>
+            <dl class="kv">
+              <dt>Objective</dt><dd data-draw="r-objective">—</dd>
+              <dt>Who it is for</dt><dd data-draw="r-who">—</dd>
+              <dt>Successful use</dt><dd data-draw="r-success">—</dd>
+              <dt>Named owner</dt><dd data-draw="r-owner">—</dd>
+              <dt>Training at launch</dt><dd data-draw="r-training">—</dd>
+              <dt>Support channel</dt><dd data-draw="r-channel">—</dd>
+              <dt>Spec and links</dt><dd data-draw="r-spec">—</dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tab" id="framework" role="tabpanel" aria-labelledby="tab-framework" hidden>
+    <div class="head">
+      <h2>The release adoption framework</h2>
+      <p>Every CSP app release becomes a task that users must understand and finish on their own. Each one is measured the same way. Leading metrics give an early warning in the first days after launch, and lagging metrics show by Day 30 whether the task really worked.</p>
+    </div>
+
+    <div class="card" id="tree-card">
+      <h3>Metric tree</h3>
+      <div class="tree" data-draw="tree" data-source="metrics" role="img" aria-label="Metric tree: leading metrics by stage flowing into lagging outcome metrics"></div>
+      <p class="cap">Read left to right. Users must be reached, discover the task, act on it and get help if stuck (leading). That drives completion, adoption depth, outcomes and quality (lagging). Each release names its objective and picks its own north star from the catalog (for STV: false closes that reached the customer). Completed unaided, at least 90% by Day 30, is the adoption goal every release must also meet.</p>
+    </div>
+
+    <div class="card" id="design-lens-card">
+      <h3>Design lens: six questions every release must answer</h3>
+      <p>Business metrics tell us whether a release worked. The design lens tells us why: whether CSPs could understand and use it on their own. Each catalog metric that answers one of these questions is tagged with it, and every release's Design scorecard shows them together. A question with no metric shows as “Not measured”, which is a gap in the release's tracking to fix before launch.</p>
+      <dl class="kv">
+        <dt>1 · Understand the change</dt><dd>Saw the launch explainer; understood it (quiz right first time).</dd>
+        <dt>2 · Know what happened</dt><dd>Noticed the task within 1 hour and within 48 hours.</dd>
+        <dt>3 · Know what to do</dt><dd>Finished their part; did it themselves in the app; finished in one sitting; passed first time; failure rate.</dd>
+        <dt>4 · Know what Wiom will do next</dt><dd>Came back to check while waiting; closed as time over.</dd>
+        <dt>5 · Recover and get help</dt><dd>Recovered after a failed check; needed help; helpline calls per 1,000; completed after help.</dd>
+        <dt>6 · Learn to finish alone</dt><dd>Completed unaided (north star); unaided on first 3 tasks vs once experienced; CSPs at 90% or more unaided.</dd>
+      </dl>
+      <p class="cap">Design asks for every release: an in-app explainer with a one-question check, an app event for each screen and tap of the task (opened with entry source, action taken, status checked), and a status message for every wait.</p>
+    </div>
+
+    <div class="card" id="lifecycle-card">
+      <h3>Release lifecycle</h3>
+      <div class="lifecycle">
+        <div class="phase"><b>1 · Plan</b><span class="cap">Before launch</span><span>Write the release brief: the objective, its north star metric, the Linear ticket and PRDs, who it is for, what successful use means, which catalog metrics apply, Day 0/7/30 targets and the baseline group. Name the owner.</span></div>
+        <div class="phase"><b>2 · Ready</b><span class="cap">Launch gate</span><span>The owner confirms training is done, the helpline has a script and a Kapture category, and the funnel query is in the daily refresh.</span></div>
+        <div class="phase"><b>3 · Launch week</b><span class="cap">Day 0–6</span><span>Watch leading metrics daily: reach, seen, user finished their part, failure rate, helpline calls per 1,000.</span></div>
+        <div class="phase"><b>4 · Day 7 review</b><span class="cap">Day 7–29</span><span>Compare leading metrics with Day 7 targets. The biggest drop-off gets a named fixer and a plan on the weekly card.</span></div>
+        <div class="phase"><b>5 · Day 30 review</b><span class="cap">Day 30</span><span>Judge lagging metrics. Adopted if the north star meets its Day 30 target and completed unaided is at least 90%; otherwise the release stays on the card as Needs fix.</span></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card" id="checklist-card">
+        <h3>Launch checklist for the named owner</h3>
+        <ul class="list">
+          <li>Release brief written: the objective, its north star metric, who it is for and what successful use means, in the user's words.</li>
+          <li>On every screen of the task, users can tell what happened, what they need to do and what Wiom will do next.</li>
+          <li>Targets set for Day 0, Day 7 and Day 30, with the baseline group named.</li>
+          <li>Helpline trained, with a script and a Kapture category for the release.</li>
+          <li>Support channel ready for users who still need help, and completion after help tracked.</li>
+          <li>Funnel query written and added to the daily refresh before Day 0.</li>
+          <li>Every rollout step and config change logged with its date, so metric shifts can be read against it.</li>
+        </ul>
+      </div>
+      <div class="card" id="cadence-card">
+        <h3>Cadence</h3>
+        <dl class="kv">
+          <dt>Daily</dt><dd>Funnel, drop-off and helpline calls per 1,000 users for every live release.</dd>
+          <dt>Weekly</dt><dd>Health report card: actuals against targets, the biggest drop-off and who is fixing it, shared with the org every Monday.</dd>
+          <dt>Day 7</dt><dd>Leading-metric review with the owner.</dd>
+          <dt>Day 30</dt><dd>Lagging-metric review: Adopted or Needs fix.</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="card" id="onboard-card">
+      <h3>Bringing a new release onto the tracker</h3>
+      <ol class="steps">
+        <li>Add the release in Manage: name, app, Day 0 date, who it is for, successful use, owner, training and support.</li>
+        <li>Map its task onto the catalog stages: what counts as reached, seen, user finished their part, failed and completed. Add a catalog metric if the release needs one that doesn't exist yet.</li>
+        <li>Write its funnel query so it returns one row per cohort, day and metric, with a numerator and a denominator, using the catalog's metric ids. The baseline is the same task on the old flow, or the same users before launch.</li>
+        <li>Add the query to the daily refresh. Its rows appear here under the release's id with no change to the page.</li>
+        <li>Set any targets that differ from the catalog defaults.</li>
+      </ol>
+    </div>
+
+    <div class="card scroll" id="catalog-card">
+      <h3>Metric catalog</h3>
+      <table id="catalog" data-source="metrics" data-row-key="id">
+        <thead><tr>
+          <th data-field="name">Metric</th>
+          <th data-field="type" class="l">Type</th>
+          <th data-field="stage" class="l">Stage</th>
+          <th data-field="question" class="l">Design question</th>
+          <th data-field="definition" class="l">Definition</th>
+          <th data-field="formula" class="l">Formula</th>
+          <th data-field="dir" class="l">Better</th>
+          <th data-field="window_days">Window (days)</th>
+          <th data-field="d0">Day 0</th>
+          <th data-field="d7">Day 7</th>
+          <th data-field="d30">Day 30</th>
+        </tr></thead>
+        <tbody data-draw="catalog-rows"></tbody>
+      </table>
+      <p class="cap">Day 0/7/30 are the default targets every release inherits. Apart from completed unaided (your manager's ≥90% by Day 30), these defaults were proposed by the adoption team and are not agreed; a release's PRD, design spec or owner overrides them. Window = days a user is given before the metric is judged.</p>
+    </div>
+  </section>
+
+  <section class="tab" id="manage" role="tabpanel" aria-labelledby="tab-manage" hidden>
+    <div class="card" id="release-form-card">
+      <div class="head">
+        <h2>Add or edit a release</h2>
+        <p class="cap">Only editors of this dashboard can save. Everyone who can open it sees what is saved.</p>
+      </div>
+      <form id="release-form" autocomplete="off">
+        <div class="row">
+          <button type="button" class="btn" id="btn-load">Load the selected release</button>
+          <button type="button" class="btn" id="btn-new">Start a new release</button>
+          <span class="cap" id="mode-new">Editing: a new release</span><span class="cap" id="mode-edit" hidden>Editing: the release you loaded</span>
+        </div>
+        <div class="fields">
+          <label for="f-name">Release name<input id="f-name" required maxlength="80"></label>
+          <label for="f-app">App area<select id="f-app" class="dash-select"><option>Service tickets</option><option>Bookings</option><option>Installations</option><option>Leads</option><option>Recharge &amp; payouts</option><option>Netbox &amp; devices</option><option>Account &amp; onboarding</option><option>Home &amp; notifications</option><option>Other</option></select></label>
+          <label for="f-launch">Day 0 (launch date)<input id="f-launch" type="date" required min="2025-01-01" max="2030-12-31"></label>
+          <label for="f-owner">Named owner<input id="f-owner" maxlength="80"></label>
+          <label for="f-objective">Objective: what the release must change<textarea id="f-objective" maxlength="400"></textarea></label>
+          <label for="f-ns">North star metric<select id="f-ns" class="dash-select" data-draw="ns-options"></select></label>
+          <label for="f-spec">Spec and links (Linear ticket, PRDs)<textarea id="f-spec" maxlength="800"></textarea></label>
+          <label for="f-clog">Change log: one per line, as YYYY-MM-DD · what changed<textarea id="f-clog" maxlength="3000"></textarea></label>
+          <label for="f-who">Who it is for<textarea id="f-who" maxlength="400"></textarea></label>
+          <label for="f-success">What counts as successful use<textarea id="f-success" maxlength="400"></textarea></label>
+          <label for="f-training">Training ready at launch<select id="f-training" class="dash-select"><option>Not yet</option><option>Planned</option><option>Done</option></select></label>
+          <label for="f-channel">Support channel ready<input id="f-channel" maxlength="160"></label>
+          <label for="f-fixowner">Who is fixing the biggest drop-off<input id="f-fixowner" maxlength="80"></label>
+          <label for="f-fixplan">Fix plan<textarea id="f-fixplan" maxlength="400"></textarea></label>
+        </div>
+        <div class="scroll">
+          <h3>Rollout waves</h3>
+          <p class="cap">If the release went out in stages, add each wave: when it started and how many CSPs were switched on. Leave empty for a single launch.</p>
+          <table class="tgt" id="waves-editor">
+            <thead><tr><th>Wave</th><th class="l">Label</th><th class="l">Start date</th><th>CSPs enabled</th></tr></thead>
+            <tbody>
+              <tr data-wave="1"><td>1</td><td class="l"><input id="w1-label" maxlength="40" aria-label="Wave 1 label"></td><td class="l"><input id="w1-date" type="date" min="2025-01-01" max="2030-12-31" aria-label="Wave 1 start date"></td><td><input id="w1-csps" type="number" min="0" step="1" aria-label="Wave 1 CSPs enabled"></td></tr>
+              <tr data-wave="2"><td>2</td><td class="l"><input id="w2-label" maxlength="40" aria-label="Wave 2 label"></td><td class="l"><input id="w2-date" type="date" min="2025-01-01" max="2030-12-31" aria-label="Wave 2 start date"></td><td><input id="w2-csps" type="number" min="0" step="1" aria-label="Wave 2 CSPs enabled"></td></tr>
+              <tr data-wave="3"><td>3</td><td class="l"><input id="w3-label" maxlength="40" aria-label="Wave 3 label"></td><td class="l"><input id="w3-date" type="date" min="2025-01-01" max="2030-12-31" aria-label="Wave 3 start date"></td><td><input id="w3-csps" type="number" min="0" step="1" aria-label="Wave 3 CSPs enabled"></td></tr>
+              <tr data-wave="4"><td>4</td><td class="l"><input id="w4-label" maxlength="40" aria-label="Wave 4 label"></td><td class="l"><input id="w4-date" type="date" min="2025-01-01" max="2030-12-31" aria-label="Wave 4 start date"></td><td><input id="w4-csps" type="number" min="0" step="1" aria-label="Wave 4 CSPs enabled"></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="scroll">
+          <h3>Targets for this release</h3>
+          <p class="cap">Leave a cell empty to use the catalog default shown in grey.</p>
+          <table class="tgt">
+            <thead><tr><th>Metric</th><th class="l">Type</th><th>Day 0</th><th>Day 7</th><th>Day 30</th></tr></thead>
+            <tbody data-draw="target-editor"></tbody>
+          </table>
+        </div>
+        <div class="row">
+          <button type="submit" class="btn primary">Save release</button>
+          <span class="cap ok" id="msg-saved" role="status" hidden>Saved.</span>
+          <span class="cap bad" id="msg-denied" role="status" hidden>Not saved. Only editors of this dashboard can save.</span>
+          <span class="cap bad" id="msg-invalid" role="status" hidden>Add a release name and a complete Day 0 date.</span>
+        </div>
+      </form>
+    </div>
+
+    <div class="card" id="metric-form-card">
+      <div class="head">
+        <h2>Add or edit a catalog metric</h2>
+        <p class="cap">Type an existing id to load it. A new metric shows on a release once that release's query returns rows with its id.</p>
+      </div>
+      <form id="metric-form" autocomplete="off">
+        <div class="fields">
+          <label for="m-id">Metric id (lowercase letters, digits, _)<input id="m-id" required maxlength="40" pattern="[a-z][a-z0-9_]{1,39}"></label>
+          <label for="m-name">Name<input id="m-name" required maxlength="80"></label>
+          <label for="m-type">Type<select id="m-type" class="dash-select"><option value="leading">Leading</option><option value="lagging">Lagging</option></select></label>
+          <label for="m-stage">Stage<select id="m-stage" class="dash-select"><option>0 Understand</option><option>1 Reach</option><option>2 Discover</option><option>3 Act</option><option>4 Help</option><option>5 Complete</option><option>6 Adoption depth</option><option>7 Outcome</option><option>8 Quality</option></select></label>
+          <label for="m-question">Design question<select id="m-question" class="dash-select"><option value="">None (business outcome)</option><option>1 Understand the change</option><option>2 Know what happened</option><option>3 Know what to do</option><option>4 Know what Wiom will do next</option><option>5 Recover and get help</option><option>6 Learn to finish alone</option></select></label>
+          <label for="m-unit">Unit<select id="m-unit" class="dash-select"><option value="%">Percent</option><option value="per1k">Per 1,000 users</option></select></label>
+          <label for="m-dir">Better when<select id="m-dir" class="dash-select"><option value="up">Higher</option><option value="down">Lower</option></select></label>
+          <label for="m-window">Window (days before judging)<input id="m-window" type="number" min="0" max="60" step="1" value="2"></label>
+          <label for="m-def">Definition<textarea id="m-def" maxlength="400"></textarea></label>
+          <label for="m-formula">Formula (numerator ÷ denominator)<input id="m-formula" maxlength="160"></label>
+          <label for="m-d0">Default Day 0 target<input id="m-d0" type="number" step="0.1"></label>
+          <label for="m-d7">Default Day 7 target<input id="m-d7" type="number" step="0.1"></label>
+          <label for="m-d30">Default Day 30 target<input id="m-d30" type="number" step="0.1"></label>
+        </div>
+        <div class="row">
+          <button type="submit" class="btn primary">Save metric</button>
+          <span class="cap ok" id="mmsg-saved" role="status" hidden>Saved.</span>
+          <span class="cap bad" id="mmsg-denied" role="status" hidden>Not saved. Only editors of this dashboard can save.</span>
+          <span class="cap bad" id="mmsg-invalid" role="status" hidden>Use a lowercase id (letters, digits, _) and a name.</span>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <details id="notes" class="card">
+    <summary>Data notes</summary>
+    <ul class="list">
+      <li><b>STV · Service ticket verification.</b> Users = service tickets on the STV flow (TAS stv_mode). Baseline = old-flow tickets received on the same days; STV CSPs come from a rollout list, so they are not a random sample. STV holds every ticket for 24 hours of verification before it closes, so “closed within 4 working hours” and “closed within 24 hours” are near zero by design. Use “user finished within 4 working hours” to compare speed.</li>
+      <li><b>Helpline.</b> CSP helpline calls whose Kapture ticket is filed under TICKETS or CSP APP. 89% of calls match a CSP.</li>
+      <li><b>Repeat complaint.</b> A new complaint (a different complaint id) on the same connection within 7 days of close.</li>
+      <li><b>Source.</b> Snowflake through Metabase, saved as a snapshot. Open Sources to see each query and download rows.</li>
+    </ul>
+  </details>
+</div>
+
+<script>
+dash.calc('release_scorecard', {
+  title: 'Scorecard, every release, wave and catalog metric',
+  description: 'For each release, for all waves together and for each rollout wave (own Day 0 = wave start): baseline, Day 0 / 7 / 30 actuals, last 7 complete days and the target for the current phase. Targets: the release\'s own, else the catalog default.',
+  inputs: ['releases', 'metrics', 'targets', 'release_metrics'],
+  fn: (releases, metrics, targets, release_metrics) => {
+    const DAY = 864e5, iso = (t) => new Date(t).toISOString().slice(0, 10), ms = (d) => Date.parse(d + 'T00:00:00Z');
+    const num = (v) => (v === '' || v == null ? null : +v);
+    const out = [];
+    for (const rel of releases) {
+      const mine = release_metrics.filter((r) => r.release_id === rel.id);
+      const last = mine.filter((r) => r.cohort === 'release').reduce((m, r) => (r.d > m ? r.d : m), '');
+      if (!last) continue;
+      const waves = Array.isArray(rel.waves) ? rel.waves : [];
+      const nsId = rel.north_star || ((metrics.find((x) => x.north_star) || {}).id);
+      const groups = [{ group: 'all', cohort: 'release', start: rel.launch, label: 'All waves' }]
+        .concat(waves.map((w, i) => ({ group: `wave_${i + 1}`, cohort: `wave_${i + 1}`, start: w.date, label: w.label || `Wave ${i + 1}` })));
+      for (const G of groups) {
+        const L = G.start;
+        if (!mine.some((r) => r.cohort === G.cohort)) continue;
+        const day = L ? Math.round((ms(last) - ms(L)) / DAY) : null;
+        for (const m of [...metrics].sort((a, b) => (+a.order || 99) - (+b.order || 99))) {
+          const rows = mine.filter((r) => r.metric === m.id);
+          if (!rows.some((r) => r.cohort === G.cohort)) continue;
+          const sc = m.unit === 'per1k' ? 1000 : 100;
+          const cut = iso(ms(last) - (+m.window_days || 0) * DAY);
+          const val = (cohort, a, b) => {
+            if (!a || b > cut) return null;
+            const rs = rows.filter((r) => r.cohort === cohort && r.d >= a && r.d <= b);
+            const n = rs.reduce((s, r) => s + (+r.num || 0), 0), d = rs.reduce((s, r) => s + (+r.den || 0), 0);
+            return d ? Math.round(10 * sc * n / d) / 10 : null;
+          };
+          const plus = (k) => (L ? iso(ms(L) + k * DAY) : null);
+          const own = targets.find((t) => t.release_id === rel.id && t.metric === m.id);
+          const relBase = own && own.vs_baseline ? val('baseline', L, cut) : null;
+          const tgt = (k) => (own && own.vs_baseline ? relBase : own && num(own[k]) != null ? num(own[k]) : own && (num(own.d0) != null || num(own.d7) != null || num(own.d30) != null) ? (num(own.d30) ?? num(own.d7) ?? num(own.d0)) : num(m[k]));
+          const phaseKey = day == null || day < 7 ? 'd0' : day < 30 ? 'd7' : 'd30';
+          const target_by = own && own.target_by ? own.target_by : m.id === 'unaided' ? (phaseKey === 'd30' ? "Manager's ask: ≥90% by Day 30" : "Proposed step toward the manager's 90%") : (num(m.d0) != null || num(m.d7) != null || num(m.d30) != null) ? 'Proposed, not agreed' : null;
+                    // 'Understand' metrics happen before Day 0 (explainer, quiz): count everything up to the day
+          const pre = String(m.stage || '').startsWith('0');
+          const from7 = pre ? '2000-01-01' : iso(Math.max(ms(cut) - 6 * DAY, L ? ms(L) : 0));
+          const last7 = L && cut >= L ? val(G.cohort, from7, cut) : null;
+          const target_now = tgt(phaseKey);
+          const ok = last7 == null || target_now == null ? null : (m.dir === 'down' ? last7 <= target_now : last7 >= target_now);
+          out.push({
+            key: `${rel.id}|${G.group}|${m.id}`, release_id: rel.id, group: G.group, group_label: G.label, group_start: L, group_day: day,
+            metric: m.id, name: m.name, type: m.type, stage: m.stage, question: m.question || null, unit: m.unit, dir: m.dir, north_star: m.id === nsId, adoption_goal: !!m.north_star,
+            baseline: val('baseline', L, cut),
+            d0: val(G.cohort, pre ? '2000-01-01' : L, L), d7: val(G.cohort, plus(1), plus(7)), d30: val(G.cohort, plus(24), plus(30)),
+            last7, target_now, target_by, vs_baseline: !!(own && own.vs_baseline), stretch: own && own.stretch != null ? +own.stretch : null,
+            target_source: own && (own.vs_baseline || num(own[phaseKey]) != null) ? 'release' : 'catalog',
+            d0_target: tgt('d0'), d7_target: tgt('d7'), d30_target: tgt('d30'),
+            status: target_now == null ? 'No target' : ok == null ? 'Window open' : ok ? 'On target' : 'Below target'
+          });
+        }
+      }
+    }
+    return out;
+  }
+});
+
+dash.calc('release_funnel', {
+  title: 'Funnel, last 7 complete days',
+  description: 'For each release and step: users reaching it over the last 7 complete days, share of those who reached the release, loss from the step before, helpline calls per 1,000 users, and the baseline share.',
+  inputs: ['release_steps'],
+  fn: (release_steps) => {
+    const DAY = 864e5, iso = (t) => new Date(t).toISOString().slice(0, 10), ms = (d) => Date.parse(d + 'T00:00:00Z');
+    const out = [];
+    for (const id of [...new Set(release_steps.map((r) => r.release_id))]) {
+      const mine = release_steps.filter((r) => r.release_id === id);
+      const last = mine.filter((r) => r.cohort === 'release').reduce((m, r) => (r.d > m ? r.d : m), '');
+      const cut = iso(ms(last) - 2 * DAY), from = iso(ms(cut) - 6 * DAY);
+      const agg = (cohort) => d3.rollups(mine.filter((r) => r.cohort === cohort && r.d >= from && r.d <= cut),
+        (v) => ({ no: +v[0].step_no, n: d3.sum(v, (x) => +x.users), csps: d3.sum(v, (x) => +x.csps || 0), calls: d3.sum(v, (x) => +x.calls || 0), hasCalls: v.some((x) => x.csps != null) }),
+        (r) => r.step).map(([step, v]) => ({ step, ...v })).sort((a, b) => a.no - b.no);
+      const rel = agg('release'), base = agg('baseline');
+      const b0 = base[0] ? base[0].n : 0;
+      rel.forEach((s, i) => {
+        const b = base.find((x) => x.step === s.step);
+        out.push({
+          key: `${id}|${s.step}`, release_id: id, step_no: s.no, step: s.step, users: s.n, is_last: i === rel.length - 1,
+          pct: rel[0].n ? Math.round(1000 * s.n / rel[0].n) / 10 : null,
+          lost: i ? rel[i - 1].n - s.n : 0,
+          lost_pct: i && rel[i - 1].n ? Math.round(1000 * (rel[i - 1].n - s.n) / rel[i - 1].n) / 10 : 0,
+          calls_1k: s.hasCalls && s.csps ? Math.round(1000 * s.calls / s.csps) : null,
+          base_pct: b && b0 ? Math.round(1000 * b.n / b0) / 10 : null
+        });
+      });
+    }
+    return out;
+  }
+});
+
+dash.calc('release_board', {
+  title: 'Releases at a glance',
+  description: 'One row per release: phase, review dates, north star against the target for its phase, leading and lagging metrics on target, biggest drop-off, owner and support readiness.',
+  inputs: ['releases', 'release_scorecard', 'release_funnel', 'release_metrics'],
+  fn: (releases, release_scorecard, release_funnel, release_metrics) => {
+    const DAY = 864e5, iso = (t) => new Date(t).toISOString().slice(0, 10), ms = (d) => Date.parse(d + 'T00:00:00Z');
+    const lastAll = release_metrics.reduce((m, r) => (r.d > m ? r.d : m), '');
+    return releases.map((rel) => {
+      const sc = release_scorecard.filter((x) => x.release_id === rel.id && x.group === 'all');
+      const waves = Array.isArray(rel.waves) ? rel.waves : [];
+      const enabled = waves.reduce((s, w) => s + (+w.csps || 0), 0);
+      const day = rel.launch && lastAll ? Math.round((ms(lastAll) - ms(rel.launch)) / DAY) : null;
+      const ns = sc.find((x) => x.north_star);
+      const ag = sc.find((x) => x.adoption_goal);
+      const judged = (t) => sc.filter((x) => x.type === t && (x.status === 'On target' || x.status === 'Below target'));
+      const lead = judged('leading'), lag = judged('lagging');
+      const des = sc.filter((x) => x.question && (x.status === 'On target' || x.status === 'Below target'));
+      const steps = release_funnel.filter((x) => x.release_id === rel.id && x.step_no > 1 && !x.is_last);
+      const drop = steps.reduce((a, x) => (!a || x.lost_pct > a.lost_pct ? x : a), null);
+      const phase = day == null ? 'No date' : day < 0 ? 'Planned' : day < 7 ? 'Launch week' : day < 30 ? 'Day 7–30' : ns && ns.status === 'On target' && ag && ag.last7 >= 90 ? 'Adopted' : 'Needs fix';
+      return {
+        id: rel.id, name: rel.name, app: rel.app, launch: rel.launch, day, phase,
+        rollout: waves.length ? `${waves.length} wave${waves.length > 1 ? 's' : ''} · ${d3.format(',')(enabled)} CSPs · latest ${waves[waves.length - 1].label || 'wave'} from ${d3.utcFormat('%e %b')(new Date(waves[waves.length - 1].date + 'T00:00:00Z')).trim()}` : 'Single launch',
+        waves_json: JSON.stringify(waves),
+        changelog_json: JSON.stringify(Array.isArray(rel.changelog) ? rel.changelog : []),
+        d7_date: rel.launch ? iso(ms(rel.launch) + 7 * DAY) : null,
+        d30_date: rel.launch ? iso(ms(rel.launch) + 30 * DAY) : null,
+        ns_name: ns ? ns.name : '—', ns_value: ns ? ns.last7 : null, ns_unit: ns ? ns.unit : '%', ns_dir: ns ? ns.dir : 'up',
+        ns_baseline: ns ? ns.baseline : null,
+        unaided: ag ? ag.last7 : null, target: ns ? ns.target_now : null,
+        status: !sc.length ? (day != null && day < 0 ? 'Not launched' : 'No data yet') : ns ? ns.status : 'No target',
+        leading_ok: lead.length ? `${lead.filter((x) => x.status === 'On target').length} of ${lead.length}` : '—',
+        design_ok: des.length ? `${des.filter((x) => x.status === 'On target').length} of ${des.length}` : '—',
+        lagging_ok: lag.length ? `${lag.filter((x) => x.status === 'On target').length} of ${lag.length}` : '—',
+        drop: drop ? `${drop.lost_pct}% before “${drop.step}”` : '—',
+        drop_step: drop ? drop.step : null, drop_pct: drop ? drop.lost_pct : null,
+        ns_metric: ns ? ns.metric : null,
+        lead_on: lead.filter((x) => x.status === 'On target').length, lead_n: lead.length,
+        lag_on: lag.filter((x) => x.status === 'On target').length, lag_n: lag.length,
+        des_on: des.filter((x) => x.status === 'On target').length, des_n: des.length,
+        csps_enabled: enabled || null, waves_n: waves.length,
+        training: rel.training || 'Not yet', channel_set: !!rel.channel, owner_named: !!rel.owner,
+        owner: rel.owner || 'To be named',
+        support: `Training: ${rel.training || 'Not yet'} · ${rel.channel ? 'channel set' : 'no channel'}`
+      };
+    });
+  }
+});
+
+dash.calc('release_daily', {
+  title: 'Every metric by day',
+  description: 'One row per release, wave group (all, or each rollout wave) and day: each catalog metric for that group and for the baseline, and whether the day is still inside each metric\'s window.',
+  inputs: ['release_metrics', 'metrics'],
+  fn: (release_metrics, metrics) => {
+    const DAY = 864e5, iso = (t) => new Date(t).toISOString().slice(0, 10), ms = (d) => Date.parse(d + 'T00:00:00Z');
+    const unit = Object.fromEntries(metrics.map((m) => [m.id, m.unit]));
+    const win = Object.fromEntries(metrics.map((m) => [m.id, +m.window_days || 0]));
+    const lastBy = {};
+    for (const r of release_metrics) if (r.cohort === 'release' && (!lastBy[r.release_id] || r.d > lastBy[r.release_id])) lastBy[r.release_id] = r.d;
+    const v = (r) => (+r.den ? Math.round(10 * (unit[r.metric] === 'per1k' ? 1000 : 100) * r.num / r.den) / 10 : null);
+    const base = new Map();
+    for (const r of release_metrics) if (r.cohort === 'baseline') base.set(`${r.release_id}|${r.d}|${r.metric}`, v(r));
+    const rows = new Map();
+    for (const r of release_metrics) {
+      if (r.cohort === 'baseline') continue;
+      const group = r.cohort === 'release' ? 'all' : r.cohort;
+      const k = `${r.release_id}|${group}|${r.d}`;
+      if (!rows.has(k)) rows.set(k, { key: k, release_id: r.release_id, group, d: r.d, state: r.d <= iso(ms(lastBy[r.release_id] || r.d) - 2 * DAY) ? 'Final' : 'Maturing' });
+      const o = rows.get(k);
+      o[r.metric] = v(r);
+      o['base_' + r.metric] = base.get(`${r.release_id}|${r.d}|${r.metric}`) ?? null;
+      o['open_' + r.metric] = r.d > iso(ms(lastBy[r.release_id]) - (win[r.metric] || 0) * DAY);
+      if (r.metric === 'seen') o.users = +r.den;
+    }
+    return [...rows.values()].sort((a, b) => (a.key < b.key ? -1 : 1));
+  }
+});
+
+window.at = {
+  rows: (id) => { const s = dash.data(id); return s.status === 'ok' ? s.data : null; },
+  sel: () => dash.params().release || '',
+  rel: () => { const r = at.rows('releases'); return r ? (r.find((x) => x.id === at.sel()) || r[0] || null) : null; },
+  fmt: (v, unit) => (v == null || v === '' ? '—' : unit === 'per1k' ? d3.format(',.0f')(+v) : d3.format('.1f')(+v) + '%'),
+  date: (d) => (d ? d3.utcFormat('%e %b %Y')(new Date(d + 'T00:00:00Z')) : '—'),
+  pill: (status) => {
+    const p = document.createElement('span');
+    p.className = 'pill ' + (/On target|Adopted/.test(status) ? 'ok' : /Below|Needs fix/.test(status) ? 'bad' : 'warn');
+    p.textContent = status;
+    return p;
+  },
+  td: (tr, text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; tr.append(td); return td; },
+  empty: (tb, cols, text) => { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = cols; td.className = 'l muted'; td.textContent = text; tr.append(td); tb.append(tr); }
+};
+</script>
+
+<script>
+(() => {
+  const TABS = ['releases', 'release', 'framework', 'manage'];
+  const open = (name) => {
+    for (const t of TABS) {
+      document.querySelectorAll('#' + t).forEach((s) => { s.hidden = t !== name; });
+      document.querySelectorAll('#tab-' + t).forEach((b) => { b.setAttribute('aria-selected', String(t === name)); b.tabIndex = t === name ? 0 : -1; });
+    }
+    dash.setLink(name);
+  };
+  window.atOpen = open;
+  for (const t of TABS) document.querySelectorAll('#tab-' + t).forEach((b) => b.addEventListener('click', () => open(t)));
+  const h = (location.hash || '').slice(1);
+  if (TABS.includes(h)) open(h);
+})();
+</script>
+
+<script>
+dash.draw('release-pick', (sel) => {
+  const rels = at.rows('releases') || [];
+  const board = at.rows('release_board') || [];
+  sel.replaceChildren();
+  if (!rels.length) { sel.append(new Option('No releases yet', '')); sel.disabled = true; return; }
+  sel.disabled = false;
+  const apps = [...new Set(rels.map((r) => r.app || 'Other'))].sort();
+  for (const app of apps) {
+    const og = document.createElement('optgroup'); og.label = app;
+    for (const r of rels.filter((x) => (x.app || 'Other') === app).sort((a, b) => ((b.launch || '') > (a.launch || '') ? 1 : -1))) {
+      const b = board.find((x) => x.id === r.id);
+      og.append(new Option(`${r.name} · Day 0 ${at.date(r.launch)}${b ? ' · ' + b.phase : ''}`, r.id));
+    }
+    sel.append(og);
+  }
+  const cur = at.rel();
+  sel.value = cur ? cur.id : '';
+  sel.onchange = () => dash.setParams({ release: sel.value, wave: 'all' });
+});
+
+// ===== Release workspace: list, header, sub-tabs =====
+dash.draw('rel-list', (nav) => {
+  const b = at.rows('release_board');
+  nav.replaceChildren();
+  if (!b) { nav.textContent = '—'; return; }
+  const q = (dash.params().rwq || '').toLowerCase();
+  const cur = at.rel();
+  const rows = b.filter((x) => !q || [x.name, x.owner, x.app, x.id].join(' ').toLowerCase().includes(q));
+  if (!rows.length) { const e = document.createElement('p'); e.className = 'cap'; e.textContent = b.length ? 'No release matches.' : 'No releases yet. Add one in Manage.'; nav.append(e); return; }
+  const grp = (x) => (x.status === 'Below target' ? 'below' : x.status === 'On target' ? 'on' : 'waiting');
+  for (const area of [...new Set(rows.map((x) => x.app || 'Other'))].sort()) {
+    const h = document.createElement('div'); h.className = 'rw-group'; h.textContent = area; nav.append(h);
+    for (const x of rows.filter((r) => (r.app || 'Other') === area).sort((a, c) => (c.launch || '').localeCompare(a.launch || ''))) {
+      const it = document.createElement('button'); it.type = 'button'; it.className = 'rw-item';
+      it.setAttribute('aria-current', String(!!cur && cur.id === x.id));
+      const dot = document.createElement('span'); dot.className = 'rw-dot ' + grp(x); dot.title = x.status;
+      const nm = document.createElement('span'); nm.className = 'rw-name'; nm.textContent = x.name;
+      const mt = document.createElement('span'); mt.className = 'rw-meta';
+      mt.textContent = `${x.day == null ? '' : x.day < 0 ? 'Planned · ' : 'Day ' + x.day + ' · '}${x.ns_value == null ? x.status : at.fmt(x.ns_value, x.ns_unit) + ' ' + (x.ns_name || '').toLowerCase()}`;
+      it.append(dot, nm, mt);
+      it.addEventListener('click', () => dash.setParams({ release: x.id, wave: 'all' }));
+      nav.append(it);
+    }
+  }
+});
+(() => {
+  document.querySelectorAll('#rw-q').forEach((inp) => {
+    let t = null;
+    inp.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => dash.setParams({ rwq: inp.value.trim() || null }), 150); });
+  });
+  const SUBS = ['summary', 'metrics', 'trend', 'rollout', 'brief'];
+  const openSub = (name) => {
+    for (const k of SUBS) {
+      document.querySelectorAll('#rs-' + k).forEach((n) => { n.hidden = k !== name; });
+      document.querySelectorAll('#st-' + k).forEach((n) => { n.setAttribute('aria-selected', String(k === name)); n.tabIndex = k === name ? 0 : -1; });
+    }
+  };
+  window.atOpenSub = openSub;
+  for (const k of SUBS) document.querySelectorAll('#st-' + k).forEach((n) => n.addEventListener('click', () => openSub(k)));
+})();
+
+dash.draw('rw-top', (el) => {
+  const r = at.rel(), b = r && (at.rows('release_board') || []).find((x) => x.id === r.id);
+  el.replaceChildren();
+  if (!r) { el.textContent = '—'; return; }
+  const a = document.createElement('span'); a.className = 'rc-area'; a.textContent = r.app || 'Other';
+  const d = document.createElement('span'); d.className = 'rc-dot';
+  el.append(a, d);
+  if (b) { el.append(at.pill(b.phase), at.pill(b.status)); }
+  const day = document.createElement('span'); day.className = 'rc-day'; day.textContent = b && b.day != null ? (b.day < 0 ? `Starts in ${-b.day} d` : `Day ${b.day}`) : '';
+  el.append(day);
+});
+dash.draw('rw-links', (el) => {
+  const r = at.rel();
+  el.replaceChildren();
+  const t = r && r.spec ? String(r.spec) : '';
+  const urls = t.match(/https?:\/\/[^\s·]+/g) || [];
+  const label = (u) => {
+    const lin = u.match(/linear\.app\/[^/]+\/issue\/([A-Z]+-\d+)/); if (lin) return `Linear ${lin[1]}`;
+    if (/figma\.com/.test(u)) return 'Figma';
+    if (/claude\.ai\/artifact/.test(u)) return 'Analysis';
+    try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return 'Link'; }
+  };
+  for (const u of urls) { const a = document.createElement('a'); a.className = 'rw-link'; a.href = u; a.target = '_blank'; a.rel = 'noopener'; a.textContent = label(u) + ' ↗'; el.append(a); }
+});
+
+// ===== Releases tab: summary, filters, cards =====
+window.rlState = () => { const p = dash.params(); return { q: (p.rq || '').toLowerCase(), area: p.rarea || '', status: p.rstatus || '', sort: p.rsort || 'attention' }; };
+const STATUS_GROUP = (b) => (b.status === 'Below target' ? 'below' : b.status === 'On target' ? 'on' : 'waiting');
+
+dash.draw('rel-summary', (el) => {
+  const b = at.rows('release_board');
+  el.replaceChildren();
+  if (!b) { el.textContent = '—'; return; }
+  const st = rlState();
+  const tiles = [
+    ['', 'Releases tracked', b.length],
+    ['below', 'Below target', b.filter((x) => STATUS_GROUP(x) === 'below').length],
+    ['on', 'On target', b.filter((x) => STATUS_GROUP(x) === 'on').length],
+    ['waiting', 'Waiting for data', b.filter((x) => STATUS_GROUP(x) === 'waiting').length]
+  ];
+  for (const [key, label, n] of tiles) {
+    const bt = document.createElement('button'); bt.type = 'button'; bt.className = 'rl-stat';
+    bt.setAttribute('aria-pressed', String(st.status === key));
+    const nn = document.createElement('span'); nn.className = 'n' + (key === 'below' && n ? ' bad' : key === 'on' && n ? ' ok' : ''); nn.textContent = String(n);
+    const tt = document.createElement('span'); tt.className = 't'; tt.textContent = key ? label : `${label} · show all`;
+    bt.append(nn, tt);
+    bt.addEventListener('click', () => dash.setParams({ rstatus: st.status === key ? null : key || null }));
+    el.append(bt);
+  }
+});
+
+dash.draw('area-chips', (el) => {
+  const b = at.rows('release_board') || [];
+  el.replaceChildren();
+  const st = rlState();
+  const areas = [...new Set(b.map((x) => x.app || 'Other'))].sort();
+  const mk = (val, label, n) => {
+    const c = document.createElement('button'); c.type = 'button'; c.className = 'rl-chip';
+    c.setAttribute('aria-pressed', String(st.area === val));
+    c.append(document.createTextNode(label));
+    const cnt = document.createElement('span'); cnt.className = 'c'; cnt.textContent = String(n); c.append(cnt);
+    c.addEventListener('click', () => dash.setParams({ rarea: val || null }));
+    el.append(c);
+  };
+  mk('', 'All areas', b.length);
+  for (const a of areas) mk(a, a, b.filter((x) => (x.app || 'Other') === a).length);
+});
+
+(() => {
+  document.querySelectorAll('#rl-q').forEach((inp) => {
+    inp.value = dash.params().rq || '';
+    let t = null;
+    inp.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => dash.setParams({ rq: inp.value.trim() || null }), 200); });
+  });
+  document.querySelectorAll('#rl-sort-sel').forEach((sel) => {
+    sel.value = dash.params().rsort || 'attention';
+    sel.addEventListener('change', () => dash.setParams({ rsort: sel.value }));
+  });
+})();
+
+const goodDelta = (b) => {
+  if (b.ns_value == null || b.ns_baseline == null) return null;
+  const d = Math.round((b.ns_value - b.ns_baseline) * 10) / 10;
+  return { d, good: b.ns_dir === 'down' ? d < 0 : d > 0 };
+};
+
+dash.draw('release-cards', (grid) => {
+  const s = dash.data('release_board');
+  grid.replaceChildren();
+  if (s.status === 'error') { grid.textContent = 'Failed to load'; return; }
+  if (s.status !== 'ok') { grid.textContent = '—'; return; }
+  const st = rlState();
+  const daily = at.rows('release_daily') || [];
+  const cur = at.rel();
+  let rows = s.data.filter((b) =>
+    (!st.area || (b.app || 'Other') === st.area) &&
+    (!st.status || STATUS_GROUP(b) === st.status) &&
+    (!st.q || [b.name, b.owner, b.app, b.id, b.ns_name].join(' ').toLowerCase().includes(st.q)));
+  const rank = { below: 0, waiting: 1, on: 2 };
+  rows.sort((a, b) => st.sort === 'name' ? a.name.localeCompare(b.name)
+    : st.sort === 'newest' ? (b.launch || '').localeCompare(a.launch || '')
+    : st.sort === 'oldest' ? (a.launch || '').localeCompare(b.launch || '')
+    : (rank[STATUS_GROUP(a)] - rank[STATUS_GROUP(b)]) || (b.launch || '').localeCompare(a.launch || ''));
+  if (!rows.length) {
+    const e = document.createElement('div'); e.className = 'rl-empty';
+    e.textContent = s.data.length ? 'No release matches these filters. Clear the search or pick “All areas”.' : 'No releases yet. Add the first one in Manage.';
+    grid.append(e); return;
+  }
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  for (const b of rows) {
+    const card = el('article', 'rc' + (cur && cur.id === b.id ? ' is-sel' : ''));
+    card.tabIndex = 0; card.setAttribute('role', 'link'); card.setAttribute('aria-label', `Open ${b.name}`);
+    // top line
+    const top = el('div', 'rc-top');
+    top.append(el('span', 'rc-area', b.app || 'Other'), el('span', 'rc-dot'), at.pill(b.phase));
+    top.append(el('span', 'rc-day', b.day == null ? '' : b.day < 0 ? `Starts in ${-b.day} d` : `Day ${b.day}`));
+    card.append(top, el('h3', 'rc-name', b.name), el('div', 'rc-owner', b.owner));
+    // north star
+    const ns = el('div', 'rc-ns');
+    ns.append(el('div', 'rc-ns-label', `North star · ${b.ns_name}`));
+    const row = el('div', 'rc-ns-row');
+    const big = el('span', 'rc-big', at.fmt(b.ns_value, b.ns_unit));
+    big.dataset.source = 'release_board'; big.dataset.field = 'ns_value'; big.dataset.where = `id=${encodeURIComponent(b.id)}`;
+    row.append(big);
+    const gd = goodDelta(b);
+    if (gd) {
+      const unit = b.ns_unit === 'per1k' ? '' : ' pts';
+      row.append(el('span', 'rc-delta ' + (gd.good ? 'ok' : 'bad'), `${gd.d < 0 ? '▼' : '▲'} ${Math.abs(gd.d)}${unit} vs baseline ${at.fmt(b.ns_baseline, b.ns_unit)}`));
+    }
+    ns.append(row);
+    const sub = el('div', 'rc-sub');
+    sub.append(at.pill(b.status));
+    if (b.target != null) sub.append(el('span', null, `target now ${b.ns_dir === 'down' ? '≤' : '≥'} ${at.fmt(b.target, b.ns_unit)} · last 7 complete days`));
+    ns.append(sub);
+    // sparkline
+    const sp = el('div', 'rc-spark');
+    const series = daily.filter((q) => q.release_id === b.id && q.group === 'all' && b.ns_metric && (q[b.ns_metric] != null || q['base_' + b.ns_metric] != null)).slice(-21);
+    ns.append(sp);
+    card.append(ns);
+    // lifecycle track
+    const tr = el('div', 'rc-track');
+    const bar = el('div', 'rc-track-bar');
+    const span = Math.max(30, Math.min(b.day == null ? 30 : b.day, 60));
+    const pos = (d) => `${Math.max(0, Math.min(100, (100 * d) / span))}%`;
+    const fill = el('div', 'rc-track-fill'); fill.style.width = pos(b.day == null ? 0 : Math.max(0, b.day)); fill.style.background = dash.colors[0];
+    bar.append(fill);
+    for (const d of [0, 7, 30]) { const t = el('span', 'rc-tick'); t.style.left = `calc(${pos(d)} - 1px)`; bar.append(t); }
+    let ws = []; try { ws = JSON.parse(b.waves_json || '[]'); } catch (e) { ws = []; }
+    for (const w of ws) {
+      if (!w.date || !b.launch) continue;
+      const wd = Math.round((Date.parse(w.date + 'T00:00:00Z') - Date.parse(b.launch + 'T00:00:00Z')) / 864e5);
+      if (wd < 0 || wd > span) continue;
+      const m = el('span', 'rc-wave'); m.style.left = pos(wd); m.title = `${w.label || 'Wave'} · ${w.date}${w.csps ? ' · ' + w.csps + ' CSPs' : ''}`; bar.append(m);
+    }
+    const lbl = el('div', 'rc-track-lbl');
+    lbl.append(el('span', null, `Day 0 · ${at.date(b.launch)}`), el('span', null, `Day 7 · ${at.date(b.d7_date)}`), el('span', null, `Day 30 · ${at.date(b.d30_date)}`));
+    tr.append(bar, lbl);
+    if (b.waves_n) tr.append(el('div', 'cap', b.rollout));
+    card.append(tr);
+    // meters
+    const meters = el('div', 'rc-meters');
+    for (const [k, on, n] of [['Leading', b.lead_on, b.lead_n], ['Lagging', b.lag_on, b.lag_n], ['Design', b.des_on, b.des_n]]) {
+      const m = el('div', 'rc-m');
+      m.append(el('span', 'k', `${k} on target`), el('span', 'v', n ? `${on} of ${n}` : '—'));
+      const br = el('div', 'bar'); const i = el('i'); const r = n ? on / n : 0;
+      i.style.width = `${Math.round(100 * r)}%`; i.style.background = r >= 0.7 ? 'var(--color-ok)' : r >= 0.4 ? 'var(--color-warn)' : 'var(--color-bad)';
+      br.append(i); m.append(br); meters.append(m);
+    }
+    card.append(meters);
+    // footer
+    const foot = el('div', 'rc-foot');
+    if (b.drop_step) foot.append(el('div', null, `Biggest drop-off: ${b.drop_pct}% lost before “${b.drop_step}”`));
+    const r2 = el('div', 'row2');
+    const flags = el('div', 'rc-flags');
+    flags.append(el('span', 'rc-flag ' + (b.owner_named ? 'yes' : 'no'), b.owner_named ? '✓ Owner' : 'No owner'));
+    flags.append(el('span', 'rc-flag ' + (b.training === 'Done' ? 'yes' : 'no'), b.training === 'Done' ? '✓ Training' : `Training: ${b.training}`));
+    flags.append(el('span', 'rc-flag ' + (b.channel_set ? 'yes' : 'no'), b.channel_set ? '✓ Support channel' : 'No support channel'));
+    r2.append(flags, el('span', 'rc-open', 'Open release →'));
+    foot.append(r2);
+    card.append(foot);
+    const go = () => { dash.setParams({ release: b.id, wave: 'all' }); atOpen('release'); if (window.atOpenSub) window.atOpenSub('summary'); };
+    card.addEventListener('click', go);
+    card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    grid.append(card);
+    // draw sparkline once the card is in the page (needs widths)
+    if (series.length > 1) {
+      const W = sp.clientWidth || 300, H = 44, k = b.ns_metric;
+      const xs = d3.scaleUtc().domain(d3.extent(series, (q) => new Date(q.d + 'T00:00:00Z'))).range([2, W - 2]);
+      const vals = series.flatMap((q) => [q[k], q['base_' + k]]).filter((v) => v != null).concat(b.target != null ? [b.target] : []);
+      const ys = d3.scaleLinear().domain(d3.extent(vals)).nice().range([H - 3, 3]);
+      const svg = d3.select(sp).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', `${b.ns_name}, last ${series.length} days`);
+      if (b.target != null) svg.append('line').attr('x1', 0).attr('x2', W).attr('y1', ys(b.target)).attr('y2', ys(b.target)).style('stroke', 'var(--cds-chart-reference)').style('stroke-dasharray', '3 3');
+      const line = (key) => d3.line().defined((q) => q[key] != null).x((q) => xs(new Date(q.d + 'T00:00:00Z'))).y((q) => ys(q[key]));
+      svg.append('path').datum(series).attr('fill', 'none').style('stroke', 'var(--cds-chart-muted)').attr('stroke-width', 1.5).attr('d', line('base_' + k));
+      svg.append('path').datum(series).attr('fill', 'none').style('stroke', dash.colors[0]).attr('stroke-width', 2).attr('d', line(k));
+      const lastPt = [...series].reverse().find((q) => q[k] != null);
+      if (lastPt) svg.append('circle').attr('cx', xs(new Date(lastPt.d + 'T00:00:00Z'))).attr('cy', ys(lastPt[k])).attr('r', 3).style('fill', dash.colors[0]);
+    } else {
+      sp.append(el('span', 'cap', 'Trend appears once there are two days of data.'));
+    }
+  }
+});
+
+dash.draw('tk-count', (el) => { const b = at.rows('releases'); el.textContent = b ? String(b.length) : '—'; });
+dash.draw('tk-metrics', (el) => { const m = at.rows('metrics'); el.textContent = m ? String(m.length) : '—'; });
+dash.draw('tk-below', (el) => {
+  const b = at.rows('release_board');
+  if (!b) { el.textContent = '—'; return; }
+  const below = b.filter((r) => r.status === 'Below target').map((r) => r.name);
+  el.textContent = below.length ? `Below target on their north star: ${below.join(', ')}.` : 'Every release with data is on target on its north star for its phase.';
+});
+
+dash.draw('board-rows', (tb) => {
+  const b = at.rows('release_board');
+  tb.replaceChildren();
+  if (!b) return;
+  if (!b.length) { at.empty(tb, 19, 'No releases yet. Add the first one in Manage.'); return; }
+  const cur = at.rel();
+  for (const r of b) {
+    const tr = document.createElement('tr');
+    tr.dataset.key = encodeURIComponent(r.id);
+    tr.className = 'pick' + (cur && cur.id === r.id ? ' sel' : '');
+    tr.tabIndex = 0;
+    tr.setAttribute('aria-label', `Open ${r.name}`);
+    const go = () => { dash.setParams({ release: r.id }); atOpen('release'); };
+    at.td(tr, r.name, 'wrap');
+    const ot = document.createElement('td'); ot.className = 'l';
+    const ob = document.createElement('button'); ob.type = 'button'; ob.className = 'open'; ob.textContent = 'Open →';
+    ob.setAttribute('aria-label', `Open ${r.name}`);
+    ob.addEventListener('click', (e) => { e.stopPropagation(); go(); });
+    ot.append(ob); tr.append(ot);
+    at.td(tr, r.app, 'l');
+    const ph = document.createElement('td'); ph.className = 'l'; ph.append(at.pill(r.phase)); tr.append(ph);
+    at.td(tr, r.rollout, 'l');
+    at.td(tr, at.date(r.launch), 'l'); at.td(tr, at.date(r.d7_date), 'l'); at.td(tr, at.date(r.d30_date), 'l');
+    at.td(tr, r.ns_name, 'wrap'); at.td(tr, at.fmt(r.ns_value, r.ns_unit)); at.td(tr, at.fmt(r.ns_baseline, r.ns_unit));
+    at.td(tr, r.target == null ? '—' : (r.ns_dir === 'down' ? '≤ ' : '≥ ') + at.fmt(r.target, r.ns_unit));
+    at.td(tr, at.fmt(r.unaided, '%'));
+    at.td(tr, r.leading_ok); at.td(tr, r.lagging_ok); at.td(tr, r.design_ok);
+    at.td(tr, r.drop, 'l'); at.td(tr, r.owner, 'l'); at.td(tr, r.support, 'l');
+    tr.addEventListener('click', go);
+    tr.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    tb.append(tr);
+  }
+});
+
+dash.draw('timeline', (el) => {
+  const s = dash.data('release_board'), mm = at.rows('release_metrics');
+  el.replaceChildren();
+  if (s.status === 'error') { el.textContent = 'Failed to load'; return; }
+  if (s.status !== 'ok') { el.textContent = '—'; return; }
+  const rows = s.data.filter((r) => r.launch);
+  if (!rows.length) { el.textContent = 'No releases with a Day 0 date yet.'; return; }
+  const p = (d) => new Date(d + 'T00:00:00Z');
+  const lastD = mm && mm.length ? mm.reduce((m, r) => (r.d > m ? r.d : m), '') : null;
+  const W = el.clientWidth || 320, rowH = 30, m = { t: 6, r: 12, b: 24 };
+  const H = m.t + rows.length * rowH + m.b;
+  const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'Release timeline');
+  const names = svg.append('g').selectAll('text').data(rows).join('text').attr('x', 0).attr('y', (d, i) => m.t + i * rowH + rowH / 2 + 4).text((d) => d.name);
+  const labW = Math.min((d3.max(names.nodes(), (n) => n.getComputedTextLength()) || 0) + 12, W * 0.42);
+  names.each(function () { const t = d3.select(this); while (this.getComputedTextLength() > labW - 12 && t.text().length > 4) t.text(t.text().slice(0, -2) + '…'); });
+  const lo = d3.min(rows, (r) => p(r.launch)), hi = d3.max([...rows.map((r) => p(r.d30_date)), lastD ? p(lastD) : lo]);
+  const x = d3.scaleUtc().domain([new Date(+lo - 2 * 864e5), new Date(+hi + 2 * 864e5)]).range([labW, W - m.r]);
+  svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(Math.max(2, Math.floor((W - labW) / 80))).tickFormat(d3.utcFormat('%e %b')).tickSizeOuter(0))
+    .call((a) => a.selectAll('line,path').style('stroke', 'var(--cds-chart-axis)'));
+  const g = svg.append('g').selectAll('g').data(rows).join('g').attr('transform', (d, i) => `translate(0,${m.t + i * rowH})`);
+  g.append('rect').attr('x', (d) => x(p(d.launch))).attr('y', 9).attr('height', rowH - 18).attr('rx', 3)
+    .attr('width', (d) => Math.max(2, x(p(d.d30_date)) - x(p(d.launch))))
+    .style('fill', (d) => (d.status === 'Below target' ? 'var(--cds-chart-status-critical)' : dash.colors[0])).style('opacity', 0.85);
+  for (const k of ['launch', 'd7_date', 'd30_date']) g.append('line').attr('x1', (d) => x(p(d[k]))).attr('x2', (d) => x(p(d[k]))).attr('y1', 5).attr('y2', rowH - 5).style('stroke', 'var(--color-fg)').attr('stroke-width', 1.5);
+  g.each(function (d) {
+    let ws = []; try { ws = JSON.parse(d.waves_json || '[]'); } catch (e) { ws = []; }
+    const gg = d3.select(this);
+    ws.forEach((w, i) => {
+      if (!w.date) return;
+      const wx = x(p(w.date));
+      gg.append('path').attr('d', `M${wx - 5},2 L${wx + 5},2 L${wx},9 Z`).style('fill', 'var(--color-fg)');
+      if (i > 0) gg.append('text').attr('x', wx + 7).attr('y', 9).style('font-size', '10px').text(`${w.label || 'Wave ' + (i + 1)} · ${w.csps || '?'} CSPs`);
+    });
+  });
+  g.each(function (d) {
+    let cl = []; try { cl = JSON.parse(d.changelog_json || '[]'); } catch (e) { cl = []; }
+    const gg = d3.select(this);
+    cl.forEach((c) => { if (!c.date) return; gg.append('circle').attr('cx', x(p(c.date))).attr('cy', rowH - 6).attr('r', 3).style('fill', 'var(--color-bg)').style('stroke', 'var(--color-fg)').attr('stroke-width', 1.5).append('title').text(`${c.date} · ${c.text || ''}`); });
+  });
+  if (lastD) svg.append('line').attr('x1', x(p(lastD))).attr('x2', x(p(lastD))).attr('y1', 0).attr('y2', H - m.b).style('stroke', 'var(--cds-chart-reference)').style('stroke-dasharray', '3 3');
+  const tip = d3.select(el).append('div').attr('class', 'tip').attr('hidden', '');
+  g.append('rect').attr('x', labW).attr('width', W - labW).attr('height', rowH).style('fill', 'transparent').style('cursor', 'pointer')
+    .on('pointermove', (ev, d) => { const [px, py] = d3.pointer(ev, el); tip.attr('hidden', null).style('left', Math.max(0, Math.min(px + 10, W - 260)) + 'px').style('top', (py + 12) + 'px').text(`${d.name} · ${d.phase} · Day 0 ${at.date(d.launch)} · Day 30 ${at.date(d.d30_date)}`); })
+    .on('pointerleave', () => tip.attr('hidden', ''))
+    .on('click', (ev, d) => { dash.setParams({ release: d.id }); atOpen('release'); });
+});
+</script>
+
+<script>
+const relText = (name, fn) => dash.draw(name, (el) => { const r = at.rel(); el.textContent = r ? (fn(r) || '—') : '—'; });
+relText('r-eyebrow', (r) => `Release detail · CSP app · ${r.app || ''}`);
+relText('r-title', (r) => r.name);
+relText('r-dates', (r) => {
+  const b = (at.rows('release_board') || []).find((x) => x.id === r.id);
+  return b ? `Day 0 ${at.date(b.launch)} · Day 7 review ${at.date(b.d7_date)} · Day 30 review ${at.date(b.d30_date)} · now Day ${b.day ?? '—'} (${b.phase}) · ${b.rollout}` : `Day 0 ${at.date(r.launch)}`;
+});
+dash.draw('r-spec', (el) => {
+  const r = at.rel();
+  el.replaceChildren();
+  const t = r && r.spec ? String(r.spec) : '';
+  if (!t) { el.textContent = '—'; return; }
+  const re = /https?:\/\/[^\s·]+/g; let i = 0, m;
+  while ((m = re.exec(t))) {
+    if (m.index > i) el.append(document.createTextNode(t.slice(i, m.index)));
+    const a = document.createElement('a'); a.className = 'lnk'; a.href = m[0]; a.target = '_blank'; a.rel = 'noopener'; a.textContent = m[0].replace(/^https?:\/\//, '');
+    el.append(a); i = m.index + m[0].length;
+  }
+  if (i < t.length) el.append(document.createTextNode(t.slice(i)));
+});
+dash.draw('r-changelog', (el) => {
+  const r = at.rel();
+  el.replaceChildren();
+  const log = r && Array.isArray(r.changelog) ? [...r.changelog].sort((a, b) => (a.date < b.date ? -1 : 1)) : [];
+  if (!log.length) { el.textContent = 'No changes logged. Add launches, rollout steps and config changes in Manage.'; return; }
+  const ul = document.createElement('ul'); ul.className = 'clog';
+  for (const c of log) { const li = document.createElement('li'); const b = document.createElement('b'); b.textContent = at.date(c.date) + ' · '; li.append(b, document.createTextNode(c.text || '')); ul.append(li); }
+  el.append(ul);
+});
+relText('r-objective', (r) => r.objective || 'Not set. Add it in Manage.');
+relText('r-who', (r) => r.who_for);
+relText('r-success', (r) => r.success);
+relText('r-owner', (r) => r.owner || 'To be named');
+relText('r-training', (r) => r.training || 'Not yet');
+relText('r-channel', (r) => r.channel || 'Not set');
+relText('r-fix-owner', (r) => r.fix_owner || 'To be named');
+relText('r-fix-plan', (r) => r.fix_plan);
+
+dash.draw('r-drop', (el) => {
+  const r = at.rel(), f = at.rows('release_funnel');
+  if (!r || !f) { el.textContent = '—'; return; }
+  const mine = f.filter((x) => x.release_id === r.id && x.step_no > 1 && !x.is_last);
+  if (!mine.length) { el.textContent = 'No data yet for this release.'; return; }
+  const w = mine.reduce((a, x) => (x.lost_pct > a.lost_pct ? x : a));
+  el.textContent = `Before “${w.step}”: ${d3.format(',')(w.lost)} users lost over the last 7 complete days, ${w.lost_pct}% of those who reached the step before.`;
+});
+
+const curGroup = () => { const g = dash.params().wave || 'all'; const s = at.rows('release_scorecard') || []; const r = at.rel(); return r && s.some((x) => x.release_id === r.id && x.group === g) ? g : 'all'; };
+const scRows = () => { const r = at.rel(), s = at.rows('release_scorecard'); const g = curGroup(); return r && s ? s.filter((x) => x.release_id === r.id && x.group === g) : null; };
+
+dash.draw('wave-pick', (sel) => {
+  const r = at.rel(), s = at.rows('release_scorecard') || [];
+  const groups = r ? [...new Map(s.filter((x) => x.release_id === r.id).map((x) => [x.group, x])).values()] : [];
+  const waves = r && Array.isArray(r.waves) ? r.waves : [];
+  sel.replaceChildren(...(groups.length ? groups : [{ group: 'all', group_label: 'All waves' }]).map((x) => {
+    const i = x.group.startsWith('wave_') ? +x.group.slice(5) - 1 : -1;
+    const w = waves[i];
+    return new Option(i >= 0 && w ? `${x.group_label} · from ${at.date(w.date)} · ${w.csps || '?'} CSPs` : 'All waves', x.group);
+  }));
+  sel.value = curGroup();
+  sel.onchange = () => dash.setParams({ wave: sel.value });
+});
+
+dash.draw('wave-rows', (tb) => {
+  const r = at.rel(), s = at.rows('release_scorecard');
+  tb.replaceChildren();
+  if (!r || !s) return;
+  const waves = Array.isArray(r.waves) ? r.waves : [];
+  const rows = s.filter((x) => x.release_id === r.id && x.north_star);
+  if (!rows.length) { at.empty(tb, 7, waves.length ? 'No data yet for these waves.' : 'Single launch. Add rollout waves in Manage if the release went out in stages.'); return; }
+  const cur = curGroup();
+  for (const x of rows) {
+    const tr = document.createElement('tr'); tr.dataset.key = encodeURIComponent(x.key);
+    tr.className = 'pick' + (x.group === cur ? ' sel' : ''); tr.tabIndex = 0;
+    const i = x.group.startsWith('wave_') ? +x.group.slice(5) - 1 : -1;
+    const w = waves[i];
+    at.td(tr, x.group_label, 'wrap'); at.td(tr, at.date(x.group_start), 'l');
+    at.td(tr, i >= 0 ? (w && w.csps ? d3.format(',')(w.csps) : '—') : d3.format(',')(waves.reduce((a, q) => a + (+q.csps || 0), 0) || 0), 'l');
+    at.td(tr, x.group_day == null ? '—' : String(x.group_day));
+    at.td(tr, at.fmt(x.last7, x.unit));
+    at.td(tr, x.target_now == null ? '—' : `${x.dir === 'down' ? '≤' : '≥'} ${at.fmt(x.target_now, x.unit)}`);
+    const st = document.createElement('td'); st.className = 'l'; st.append(at.pill(x.status)); tr.append(st);
+    const go = () => dash.setParams({ wave: x.group });
+    tr.addEventListener('click', go);
+    tr.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    tb.append(tr);
+  }
+});
+dash.draw('tile-ns', (el) => { const s = scRows(); const n = s && s.find((x) => x.north_star); el.textContent = n ? at.fmt(n.last7, n.unit) : '—'; });
+dash.draw('tile-ns-sub', (el) => { const s = scRows(); const n = s && s.find((x) => x.north_star); el.textContent = n ? `Last 7 days · target now ${n.dir === 'down' ? '≤' : '≥'} ${at.fmt(n.target_now, n.unit)} · baseline ${at.fmt(n.baseline, n.unit)}` : 'No data yet'; });
+dash.draw('tile-ns-name', (el) => { const s = scRows(); const n = s && s.find((x) => x.north_star); el.textContent = n ? `North star · ${n.name}` : 'North star'; });
+dash.draw('tile-ag', (el) => { const s = scRows(); const n = s && s.find((x) => x.adoption_goal); el.textContent = n ? at.fmt(n.last7, n.unit) : '—'; });
+dash.draw('tile-ag-sub', (el) => { const s = scRows(); const n = s && s.find((x) => x.adoption_goal); el.textContent = n ? `Last 7 days · target now ≥ ${at.fmt(n.target_now, n.unit)} · goal 90% by Day 30` : 'No data yet'; });
+const countTile = (name, type) => dash.draw(name, (el) => {
+  const s = scRows();
+  const j = s ? s.filter((x) => x.type === type && /On target|Below target/.test(x.status)) : [];
+  el.textContent = j.length ? `${j.filter((x) => x.status === 'On target').length} of ${j.length}` : '—';
+});
+countTile('tile-lead', 'leading'); countTile('tile-lag', 'lagging');
+dash.draw('tile-des', (el) => {
+  const s = scRows();
+  const j = s ? s.filter((x) => x.question && /On target|Below target/.test(x.status)) : [];
+  el.textContent = j.length ? `${j.filter((x) => x.status === 'On target').length} of ${j.length}` : '—';
+});
+
+const DESIGN_Q = {
+  '1 Understand the change': 'Before the first task, does the CSP know the flow has changed and how?',
+  '2 Know what happened': 'Does the CSP notice the new task quickly?',
+  '3 Know what to do': 'Does the CSP know the next step and finish it in one go, by themselves?',
+  '4 Know what Wiom will do next': 'While Wiom checks the work, does the CSP know what happens next and when?',
+  '5 Recover and get help': 'When something fails or the CSP is stuck, can they recover, and does help work?',
+  '6 Learn to finish alone': 'Does the CSP finish without help, and get better with practice?'
+};
+dash.draw('design-blocks', (el) => {
+  const s = scRows();
+  el.replaceChildren();
+  if (!s) { el.textContent = '—'; return; }
+  const rows = s.filter((x) => x.question);
+  if (!rows.length) { el.textContent = 'No design metrics for this release yet.'; return; }
+  for (const q of Object.keys(DESIGN_Q)) {
+    const box = document.createElement('div'); box.className = 'q';
+    const h = document.createElement('h4'); h.textContent = q.replace(/^\d+\s*/, ''); box.append(h);
+    const sub = document.createElement('span'); sub.className = 'cap'; sub.textContent = DESIGN_Q[q]; box.append(sub);
+    const mine = rows.filter((x) => x.question === q);
+    if (!mine.length) {
+      const n = document.createElement('span'); n.className = 'cap bad';
+      n.textContent = 'Not measured for this release. Add an event or metric that answers this question.';
+      box.append(n);
+    }
+    for (const x of mine) {
+      const r = document.createElement('div'); r.className = 'mrow';
+      r.dataset.source = 'release_scorecard'; r.dataset.field = 'last7'; r.dataset.where = `key=${encodeURIComponent(x.key)}`;
+      const nm = document.createElement('span'); nm.textContent = x.name;
+      const v = document.createElement('span'); v.className = 'v'; v.textContent = at.fmt(x.last7, x.unit);
+      const st = at.pill(x.status);
+      r.append(nm, v, st);
+      const c = document.createElement('span'); c.className = 'cap';
+      c.textContent = `target ${x.target_now == null ? '—' : (x.dir === 'down' ? '≤ ' : '≥ ') + at.fmt(x.target_now, x.unit)} · baseline ${at.fmt(x.baseline, x.unit)}`;
+      box.append(r, c);
+    }
+    el.append(box);
+  }
+});
+
+dash.draw('attention', (el) => {
+  const s = scRows();
+  el.replaceChildren();
+  if (!s) { el.textContent = '—'; return; }
+  const below = s.filter((x) => x.status === 'Below target' && x.last7 != null && x.target_now != null)
+    .map((x) => ({ ...x, gap: Math.abs(x.last7 - x.target_now) / Math.max(1, Math.abs(x.target_now)) }))
+    .sort((a, b) => (b.north_star - a.north_star) || (b.gap - a.gap)).slice(0, 6);
+  if (!below.length) {
+    const p = document.createElement('p'); p.className = 'cap';
+    p.textContent = s.some((x) => x.status === 'Window open') ? 'Nothing below target among metrics that can be judged yet. Others are still inside their window.' : 'Every judged metric is on target for this phase.';
+    el.append(p); return;
+  }
+  for (const x of below) {
+    const r = document.createElement('button'); r.type = 'button'; r.className = 'att-row';
+    const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = (x.north_star ? '★ ' : '') + x.name;
+    const vl = document.createElement('span'); vl.className = 'vl bad'; vl.textContent = at.fmt(x.last7, x.unit);
+    const gp = document.createElement('span'); gp.className = 'gp';
+    gp.textContent = `Target ${x.dir === 'down' ? '≤' : '≥'} ${at.fmt(x.target_now, x.unit)} · baseline ${at.fmt(x.baseline, x.unit)} · ${x.type}${x.question ? ' · ' + x.question.replace(/^\d+\s*/, '') : ''}`;
+    r.append(nm, vl, gp);
+    r.addEventListener('click', () => { dash.setParams({ metric: x.metric }); if (window.atOpenSub) window.atOpenSub('trend'); });
+    el.append(r);
+  }
+});
+
+dash.draw('tile-spec', (el) => {
+  const r = at.rel(), sp = at.rows('spec');
+  if (!r || !sp) { el.textContent = '—'; return; }
+  const mine = sp.filter((x) => x.release_id === r.id);
+  el.textContent = mine.length ? `${mine.filter((x) => x.tracked).length} of ${mine.length}` : '—';
+});
+
+dash.draw('spec-rows', (tb) => {
+  const r = at.rel(), sp = at.rows('spec'), sc = scRows() || [];
+  tb.replaceChildren();
+  if (!r || !sp) return;
+  const mine = sp.filter((x) => x.release_id === r.id).sort((a, b) => (+a.order || 0) - (+b.order || 0));
+  if (!mine.length) { at.empty(tb, 7, 'No spec items registered for this release yet.'); return; }
+  let lastKind = null;
+  for (const x of mine) {
+    const tr = document.createElement('tr'); tr.dataset.key = encodeURIComponent(x.id);
+    at.td(tr, x.item); at.td(tr, x.title, 'wrap l');
+    at.td(tr, x.kind, 'l');
+    const t = at.td(tr, x.target_text || '—', 'wrap l');
+    if (x.target_by && x.target_by !== '—') { t.append(document.createElement('br')); const g = document.createElement('span'); g.className = 'tag'; g.textContent = x.target_by; t.append(g); }
+    at.td(tr, x.spec_baseline || '—', 'wrap l');
+    const now = document.createElement('td'); now.className = 'l wrap';
+    const m = x.metric ? sc.find((q) => q.metric === x.metric) : null;
+    if (m) {
+      const v = document.createElement('b'); v.textContent = at.fmt(m.last7, m.unit) + ' '; now.append(v, at.pill(m.status));
+      const nm = document.createElement('div'); nm.className = 'cap'; nm.textContent = m.name; now.append(nm);
+    } else if (x.metric) {
+      const p = document.createElement('span'); p.className = 'cap'; p.textContent = 'Metric defined, no data for this release or wave yet'; now.append(p);
+    } else {
+      const p = document.createElement('span'); p.className = 'pill warn'; p.textContent = 'Not tracked yet'; now.append(p);
+      if (x.needs) { const n = document.createElement('div'); n.className = 'cap'; n.textContent = 'Needs: ' + x.needs; now.append(n); }
+    }
+    tr.append(now);
+    at.td(tr, x.source || '—', 'wrap l');
+    tb.append(tr);
+  }
+});
+
+dash.draw('metric-filter', (el) => {
+  const s = scRows() || [];
+  el.replaceChildren();
+  const cur = dash.params().mf || 'all';
+  const opts = [['all', 'All', s.length], ['below', 'Below target', s.filter((x) => x.status === 'Below target').length], ['leading', 'Leading', s.filter((x) => x.type === 'leading').length], ['lagging', 'Lagging', s.filter((x) => x.type === 'lagging').length], ['design', 'Design', s.filter((x) => x.question).length]];
+  for (const [k, label, n] of opts) {
+    const c = document.createElement('button'); c.type = 'button'; c.className = 'rl-chip'; c.setAttribute('aria-pressed', String(cur === k));
+    c.append(document.createTextNode(label)); const cn = document.createElement('span'); cn.className = 'c'; cn.textContent = String(n); c.append(cn);
+    c.addEventListener('click', () => dash.setParams({ mf: k === 'all' ? null : k }));
+    el.append(c);
+  }
+});
+
+dash.draw('score-rows', (tb) => {
+  const mf = dash.params().mf || 'all';
+  const s0 = scRows();
+  const s = s0 ? s0.filter((x) => mf === 'all' || (mf === 'below' && x.status === 'Below target') || (mf === 'design' && x.question) || x.type === mf) : s0;
+  tb.replaceChildren();
+  if (!s) return;
+  if (!s.length) { at.empty(tb, 10, s0.length ? 'No metric matches this filter.' : 'No data yet for this release. Add its funnel query to the daily refresh.'); return; }
+  for (const type of ['leading', 'lagging']) {
+    const rows = s.filter((x) => x.type === type);
+    if (!rows.length) continue;
+    const gr = document.createElement('tr'); gr.className = 'group';
+    at.td(gr, type === 'leading' ? 'Leading · early signals' : 'Lagging · outcomes').colSpan = 10;
+    tb.append(gr);
+    for (const x of rows) {
+      const tr = document.createElement('tr'); tr.dataset.key = encodeURIComponent(x.key);
+      at.td(tr, (x.north_star ? '★ ' : '') + x.name, 'wrap'); at.td(tr, x.stage, 'l'); at.td(tr, x.question ? x.question.replace(/^\d+\s*/, '') : '—', 'l');
+      at.td(tr, at.fmt(x.baseline, x.unit)); at.td(tr, at.fmt(x.d0, x.unit)); at.td(tr, at.fmt(x.d7, x.unit)); at.td(tr, at.fmt(x.d30, x.unit));
+      at.td(tr, at.fmt(x.last7, x.unit));
+      const tc = at.td(tr, x.target_now == null ? '—' : `${x.dir === 'down' ? '≤' : '≥'} ${at.fmt(x.target_now, x.unit)}${x.vs_baseline ? ' (baseline)' : ''}`);
+      if (x.target_by) { tc.append(document.createElement('br')); const tg = document.createElement('span'); tg.className = 'tag' + (/Proposed/.test(x.target_by) ? ' warn' : ''); tg.textContent = x.target_by; tc.append(tg); }
+      const st = document.createElement('td'); st.className = 'l'; st.append(at.pill(x.status)); tr.append(st);
+      tb.append(tr);
+    }
+  }
+});
+
+dash.draw('metric-pick', (sel) => {
+  const s = scRows() || [];
+  sel.replaceChildren(...s.map((x) => new Option(`${x.type === 'leading' ? 'Leading' : 'Lagging'} · ${x.name}`, x.metric)));
+  const cur = dash.params().metric;
+  sel.value = s.some((x) => x.metric === cur) ? cur : ((s.find((x) => x.north_star) || s[0] || {}).metric || '');
+  sel.onchange = () => dash.setParams({ metric: sel.value });
+});
+dash.draw('sw-rel', (el) => { el.style.background = dash.colors[0]; });
+dash.draw('sw-base', (el) => { el.style.background = 'var(--cds-chart-muted)'; });
+
+dash.draw('trend', (el) => {
+  const r = at.rel(), s = dash.data('release_daily'), sc = scRows() || [];
+  el.replaceChildren();
+  if (s.status === 'error') { el.textContent = 'Failed to load'; return; }
+  if (s.status !== 'ok' || !r) { el.textContent = '—'; return; }
+  const want = dash.params().metric;
+  const meta = sc.find((x) => x.metric === want) || sc.find((x) => x.north_star) || sc[0];
+  if (!meta) { el.textContent = 'No data yet for this release.'; return; }
+  const k = meta.metric;
+  const g = curGroup();
+  const rows = s.data.filter((q) => q.release_id === r.id && q.group === g && (q[k] != null || q['base_' + k] != null)).map((q) => ({ ...q, date: new Date(q.d + 'T00:00:00Z') }));
+  if (!rows.length) { el.textContent = 'No data for this metric yet.'; return; }
+  const W = el.clientWidth || 320, H = 260, m = { t: 16, r: 16, b: 26, l: 44 };
+  const goal = meta.d30_target;
+  const vals = rows.flatMap((q) => [q[k], q['base_' + k]]).filter((v) => v != null).concat(goal != null ? [goal] : []);
+  const top = meta.unit === '%' ? 100 : Math.max(10, d3.max(vals) * 1.1);
+  const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', `${meta.name} by day`);
+  const x = d3.scaleUtc().domain(d3.extent(rows, (q) => q.date)).range([m.l, W - m.r]);
+  if (rows.length === 1) x.domain([new Date(+rows[0].date - 864e5), new Date(+rows[0].date + 864e5)]);
+  const y = d3.scaleLinear().domain([0, top]).nice().range([H - m.b, m.t]);
+  const f = (v) => (meta.unit === '%' ? v + '%' : d3.format(',')(v));
+  svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(Math.max(2, Math.floor(W / 90))).tickFormat(d3.utcFormat('%e %b')).tickSizeOuter(0))
+    .call((a) => a.selectAll('line,path').style('stroke', 'var(--cds-chart-axis)'));
+  svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickFormat(f).tickSize(-(W - m.l - m.r)))
+    .call((a) => a.select('.domain').remove()).call((a) => a.selectAll('line').style('stroke', 'var(--cds-chart-grid)'));
+  if (goal != null) {
+    svg.append('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', y(goal)).attr('y2', y(goal)).style('stroke', 'var(--cds-chart-reference)').style('stroke-dasharray', '4 3');
+    svg.append('text').attr('x', W - m.r).attr('y', y(goal) - 4).attr('text-anchor', 'end').text(`Day 30 target ${meta.dir === 'down' ? '≤' : '≥'} ${f(goal)}`);
+  }
+  for (const [key, c] of [['base_' + k, 'var(--cds-chart-muted)'], [k, dash.colors[0]]]) {
+    const pts = rows.filter((q) => q[key] != null);
+    svg.append('path').datum(pts).attr('fill', 'none').style('stroke', c).attr('stroke-width', 2).attr('d', d3.line().x((q) => x(q.date)).y((q) => y(q[key])));
+    svg.selectAll(null).data(pts).join('circle').attr('cx', (q) => x(q.date)).attr('cy', (q) => y(q[key])).attr('r', 3.5)
+      .style('stroke', c).attr('stroke-width', 1.5).style('fill', (q) => (q['open_' + k] ? 'var(--color-bg)' : c));
+  }
+  const tip = d3.select(el).append('div').attr('class', 'tip').attr('hidden', '');
+  svg.append('rect').attr('x', m.l).attr('y', m.t).attr('width', W - m.l - m.r).attr('height', H - m.t - m.b).style('fill', 'transparent')
+    .on('pointermove', (ev) => {
+      const [px] = d3.pointer(ev); const dt = x.invert(px);
+      const q = rows.reduce((a, b) => (Math.abs(b.date - dt) < Math.abs(a.date - dt) ? b : a));
+      tip.attr('hidden', null).style('left', Math.max(0, Math.min(x(q.date) + 8, W - 260)) + 'px').style('top', '4px')
+        .text(`${d3.utcFormat('%e %b')(q.date)} · ${meta.name} ${q[k] == null ? '—' : f(q[k])}${q['base_' + k] != null ? ` · baseline ${f(q['base_' + k])}` : ''}${q['open_' + k] ? ' (window open)' : ''}`);
+    })
+    .on('pointerleave', () => tip.attr('hidden', ''));
+});
+
+dash.draw('daily-head', (th) => {
+  const s = scRows() || [];
+  th.replaceChildren();
+  const tr = document.createElement('tr');
+  const add = (field, text, cls) => { const h = document.createElement('th'); h.dataset.field = field; h.textContent = text; if (cls) h.className = cls; tr.append(h); };
+  add('d', 'Day'); add('users', 'Users');
+  for (const x of s) add(x.metric, x.name);
+  add('state', 'State', 'l');
+  th.append(tr);
+});
+dash.draw('daily-rows', (tb) => {
+  const r = at.rel(), d = at.rows('release_daily'), s = scRows() || [];
+  tb.replaceChildren();
+  if (!r || !d) return;
+  const g = curGroup();
+  const rows = d.filter((x) => x.release_id === r.id && x.group === g);
+  if (!rows.length) { at.empty(tb, 3, 'No data yet. Add this release to the daily refresh to start tracking.'); return; }
+  for (const x of [...rows].reverse()) {
+    const tr = document.createElement('tr'); tr.dataset.key = encodeURIComponent(x.key);
+    at.td(tr, d3.utcFormat('%a %e %b')(new Date(x.d + 'T00:00:00Z')));
+    at.td(tr, x.users == null ? '—' : d3.format(',')(x.users));
+    for (const m of s) at.td(tr, at.fmt(x[m.metric], m.unit), x['open_' + m.metric] ? 'muted' : '');
+    at.td(tr, x.state, 'l' + (x.state === 'Final' ? '' : ' muted'));
+    tb.append(tr);
+  }
+});
+
+dash.draw('funnel', (el) => {
+  const r = at.rel(), s = dash.data('release_funnel');
+  el.replaceChildren();
+  if (s.status === 'error') { el.textContent = 'Failed to load'; return; }
+  if (s.status !== 'ok' || !r) { el.textContent = '—'; return; }
+  const rows = s.data.filter((x) => x.release_id === r.id).sort((a, b) => a.step_no - b.step_no);
+  if (!rows.length) { el.textContent = 'No data yet for this release.'; return; }
+  const W = el.clientWidth || 320, rowH = 34, H = rows.length * rowH + 4;
+  const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', `Funnel for ${r.name}`);
+  const g = svg.selectAll('g').data(rows).join('g').attr('transform', (d, i) => `translate(0,${i * rowH})`);
+  const lab = g.append('text').attr('x', 0).attr('y', rowH / 2 + 4).text((d) => d.step);
+  const calls = g.append('text').attr('x', W).attr('y', rowH / 2 + 4).attr('text-anchor', 'end').text((d) => (d.calls_1k == null ? '' : `${d.calls_1k} calls/1k`));
+  const val = g.append('text').attr('y', rowH / 2 + 4).text((d) => `${d3.format(',')(d.users)} · ${d.pct}%`);
+  const widest = (sel) => d3.max(sel.nodes(), (n) => n.getComputedTextLength()) || 0;
+  const labW = widest(lab) + 10, rightW = widest(calls) + 12, valW = widest(val) + 8;
+  const x = d3.scaleLinear().domain([0, 100]).range([0, Math.max(20, W - labW - rightW - valW)]);
+  g.insert('rect', ':nth-child(2)').attr('x', labW).attr('y', 7).attr('height', rowH - 14).attr('rx', 3)
+    .attr('width', (d) => x(d.pct || 0)).style('fill', (d) => (d.is_last ? dash.colors[0] : 'var(--cds-chart-muted)'));
+  g.filter((d) => d.base_pct != null).append('line').attr('x1', (d) => labW + x(d.base_pct)).attr('x2', (d) => labW + x(d.base_pct))
+    .attr('y1', 4).attr('y2', rowH - 4).style('stroke', 'var(--cds-chart-reference)').attr('stroke-width', 2);
+  val.attr('x', (d) => labW + x(d.pct || 0) + 6);
+});
+</script>
+
+<script>
+dash.draw('catalog-rows', (tb) => {
+  const m = at.rows('metrics');
+  tb.replaceChildren();
+  if (!m) return;
+  for (const x of [...m].sort((a, b) => (+a.order || 99) - (+b.order || 99))) {
+    const tr = document.createElement('tr'); tr.dataset.key = encodeURIComponent(x.id);
+    at.td(tr, (x.north_star ? '★ ' : '') + x.name, 'wrap');
+    const tt = document.createElement('td'); tt.className = 'l'; const tg = document.createElement('span'); tg.className = 'tag'; tg.textContent = x.type === 'leading' ? 'Leading' : 'Lagging'; tt.append(tg); tr.append(tt);
+    at.td(tr, x.stage, 'l'); at.td(tr, x.question ? x.question.replace(/^\d+\s*/, '') : '—', 'l'); at.td(tr, x.definition || '—', 'def'); at.td(tr, x.formula || '—', 'def');
+    at.td(tr, x.dir === 'down' ? 'Lower' : 'Higher', 'l'); at.td(tr, String(x.window_days ?? '—'));
+    for (const k of ['d0', 'd7', 'd30']) at.td(tr, x[k] == null || x[k] === '' ? '—' : at.fmt(x[k], x.unit));
+    tb.append(tr);
+  }
+});
+
+dash.draw('tree', (el) => {
+  const m = at.rows('metrics');
+  el.replaceChildren();
+  if (!m) { el.textContent = '—'; return; }
+  const stages = [...new Set(m.map((x) => x.stage))].sort();
+  const W = el.clientWidth || 320;
+  const cols = W < 520 ? 2 : W < 900 ? 4 : stages.length;
+  const colW = W / cols, boxH = 22, gap = 6, headH = 34;
+  const byStage = stages.map((s) => m.filter((x) => x.stage === s).sort((a, b) => (+a.order || 99) - (+b.order || 99)));
+  const nBands = Math.ceil(stages.length / cols);
+  const bandH = d3.range(nBands).map((b) => d3.max(stages.map((s, i) => (Math.floor(i / cols) === b ? headH + byStage[i].length * (boxH + gap) + 14 : 0))));
+  const H = d3.sum(bandH) + 4;
+  const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'Metric tree by stage');
+  stages.forEach((s, i) => {
+    const cx = (i % cols) * colW, cy = d3.sum(bandH.slice(0, Math.floor(i / cols)));
+    const g = svg.append('g').attr('transform', `translate(${cx + 2},${cy})`);
+    const types = new Set(byStage[i].map((x) => x.type));
+    g.append('text').attr('x', 0).attr('y', 13).style('font-weight', '600').style('fill', 'var(--color-fg)').text(s.replace(/^\d+\s*/, ''));
+    g.append('text').attr('x', 0).attr('y', 27).text(types.size > 1 ? 'leading and lagging' : [...types][0]);
+    byStage[i].forEach((x, j) => {
+      const yy = headH + j * (boxH + gap);
+      g.append('rect').attr('x', 0).attr('y', yy).attr('width', colW - 10).attr('height', boxH).attr('rx', 4)
+        .style('fill', x.type === 'leading' ? 'var(--color-bg)' : 'var(--cds-chart-muted)').style('fill-opacity', x.type === 'leading' ? 1 : 0.35)
+        .style('stroke', x.north_star ? dash.colors[0] : 'var(--color-border-line)').attr('stroke-width', x.north_star ? 2 : 1);
+      const t = g.append('text').attr('x', 6).attr('y', yy + 15).style('fill', 'var(--color-fg)').text((x.north_star ? '★ ' : '') + x.name);
+      const node = t.node();
+      while (node.getComputedTextLength() > colW - 22 && t.text().length > 4) t.text(t.text().slice(0, -2) + '…');
+    });
+  });
+});
+</script>
+
+<script>
+(() => {
+  const form = document.querySelector('#release-form');
+  if (!form) return;
+  const $ = (id) => form.querySelector('#' + id);
+  let editingId = null;
+  const show = (ids) => ['msg-saved', 'msg-denied', 'msg-invalid'].forEach((k) => form.querySelectorAll('#' + k).forEach((n) => { n.hidden = !ids.includes(k); }));
+  const showMode = () => { form.querySelectorAll('#mode-new').forEach((n) => { n.hidden = !!editingId; }); form.querySelectorAll('#mode-edit').forEach((n) => { n.hidden = !editingId; }); };
+  const v = (id, x) => { const el = $(id); if (el) el.value = x ?? ''; };
+  const fill = (rel) => {
+    v('f-name', rel?.name); v('f-app', rel?.app || 'Service tickets'); v('f-launch', rel?.launch); v('f-owner', rel?.owner);
+    v('f-who', rel?.who_for); v('f-success', rel?.success); v('f-training', rel?.training || 'Not yet'); v('f-channel', rel?.channel);
+    v('f-fixowner', rel?.fix_owner); v('f-fixplan', rel?.fix_plan); v('f-objective', rel?.objective); v('f-spec', rel?.spec);
+    v('f-clog', rel && Array.isArray(rel.changelog) ? rel.changelog.map((c) => `${c.date} · ${c.text}`).join('\n') : '');
+    const nsSel = $('f-ns'); if (nsSel) { nsSel.dataset.want = rel?.north_star || ''; dash.draw('ns-options'); }
+    const ws = rel && Array.isArray(rel.waves) ? rel.waves : [];
+    for (let i = 1; i <= 4; i++) { const w = ws[i - 1] || {}; v(`w${i}-label`, w.label); v(`w${i}-date`, w.date); v(`w${i}-csps`, w.csps); }
+    editingId = rel ? rel.id : null;
+    window.atEditing = editingId;
+    dash.draw('target-editor');
+  };
+  form.querySelectorAll('#btn-load').forEach((b) => b.addEventListener('click', () => { fill(at.rel()); showMode(); show([]); }));
+  form.querySelectorAll('#btn-new').forEach((b) => b.addEventListener('click', () => { fill(null); showMode(); show([]); }));
+  const slug = (s) => s.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'release';
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = $('f-name').value.trim(), launch = $('f-launch').value;
+    if (!name || !launch || !$('f-launch').validity.valid) { show(['msg-invalid']); return; }
+    const existing = (at.rows('releases') || []).map((r) => r.id);
+    let id = editingId;
+    if (!id) { id = slug(name); let n = 2; while (existing.includes(id)) id = `${slug(name)}-${n++}`; }
+    const row = { name, app: $('f-app').value, launch, owner: $('f-owner').value.trim(), who_for: $('f-who').value.trim(), success: $('f-success').value.trim(),
+      training: $('f-training').value, channel: $('f-channel').value.trim(), fix_owner: $('f-fixowner').value.trim(), fix_plan: $('f-fixplan').value.trim(),
+      objective: $('f-objective').value.trim(), north_star: $('f-ns').value || null, spec: $('f-spec').value.trim(),
+      changelog: $('f-clog').value.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => { const m = l.match(/^(\d{4}-\d{2}-\d{2})\s*[·\-–:]?\s*(.*)$/); return m ? { date: m[1], text: m[2] } : null; }).filter(Boolean) };
+    const waves = [];
+    for (let i = 1; i <= 4; i++) {
+      const d = $(`w${i}-date`), date = d && d.validity.valid ? d.value : '';
+      if (!date) continue;
+      const c = $(`w${i}-csps`).value;
+      waves.push({ label: $(`w${i}-label`).value.trim() || `Wave ${waves.length + 1}`, date, csps: c === '' ? null : +c });
+    }
+    waves.sort((a, b) => (a.date < b.date ? -1 : 1));
+    row.waves = waves;
+    try {
+      const db = await claude.use('db');
+      await db.doc(`data/tracker/releases/${id}`).set(row);
+      const have = new Set((at.rows('targets') || []).filter((t) => t.release_id === id).map((t) => t.metric));
+      for (const tr of form.querySelectorAll('tr[data-metric]')) {
+        const mid = tr.dataset.metric;
+        const vals = ['d0', 'd7', 'd30'].map((k) => { const i = tr.querySelector(`input[data-k="${k}"]`); return i ? i.value : ''; });
+        if (vals.every((x) => x === '')) { if (have.has(mid)) await db.doc(`data/tracker/targets/${id}__${mid}`).delete(); continue; }
+        await db.doc(`data/tracker/targets/${id}__${mid}`).set({ release_id: id, metric: mid, d0: vals[0] === '' ? null : +vals[0], d7: vals[1] === '' ? null : +vals[1], d30: vals[2] === '' ? null : +vals[2] });
+      }
+      editingId = id; window.atEditing = id;
+      showMode(); show(['msg-saved']);
+      dash.setParams({ release: id });
+    } catch (err) { show(['msg-denied']); }
+  });
+})();
+
+dash.draw('ns-options', (sel) => {
+  const m = at.rows('metrics') || [];
+  const keep = sel.dataset.want != null && sel.dataset.want !== '' ? sel.dataset.want : sel.value;
+  sel.replaceChildren(new Option('Completed unaided (default)', ''), ...[...m].sort((a, b) => (+a.order || 99) - (+b.order || 99)).filter((x) => !x.north_star).map((x) => new Option(x.name, x.id)));
+  sel.value = m.some((x) => x.id === keep) ? keep : '';
+  sel.onchange = () => { sel.dataset.want = sel.value; };
+});
+
+dash.draw('target-editor', {
+  mount: () => ({ sig: '' }),
+  update: (tb, made) => {
+    const m = at.rows('metrics');
+    if (!m) return;
+    const id = window.atEditing || null;
+    const own = (at.rows('targets') || []).filter((t) => id && t.release_id === id);
+    const sig = `${id}|${m.map((x) => `${x.id}:${x.d0}:${x.d7}:${x.d30}`).join(',')}|${own.map((t) => `${t.metric}:${t.d0}:${t.d7}:${t.d30}`).join(',')}`;
+    if (sig === made.sig) return;
+    made.sig = sig;
+    tb.replaceChildren();
+    for (const x of [...m].sort((a, b) => (+a.order || 99) - (+b.order || 99))) {
+      const tr = document.createElement('tr'); tr.dataset.metric = x.id;
+      at.td(tr, x.name, 'wrap'); at.td(tr, x.type === 'leading' ? 'Leading' : 'Lagging', 'l');
+      const t = own.find((o) => o.metric === x.id);
+      for (const k of ['d0', 'd7', 'd30']) {
+        const td = document.createElement('td'); const inp = document.createElement('input');
+        inp.type = 'number'; inp.step = '0.1'; inp.dataset.k = k; inp.setAttribute('aria-label', `${x.name}, ${k.toUpperCase()} target`);
+        inp.placeholder = x[k] == null || x[k] === '' ? '' : String(x[k]);
+        inp.value = t && t[k] != null ? String(t[k]) : '';
+        td.append(inp); tr.append(td);
+      }
+      tb.append(tr);
+    }
+  }
+});
+
+(() => {
+  const form = document.querySelector('#metric-form');
+  if (!form) return;
+  const $ = (id) => form.querySelector('#' + id);
+  const show = (ids) => ['mmsg-saved', 'mmsg-denied', 'mmsg-invalid'].forEach((k) => form.querySelectorAll('#' + k).forEach((n) => { n.hidden = !ids.includes(k); }));
+  form.querySelectorAll('#m-id').forEach((inp) => inp.addEventListener('change', () => {
+    const x = (at.rows('metrics') || []).find((r) => r.id === inp.value.trim());
+    if (!x) return;
+    const v = (id, val) => { const el = $(id); if (el) el.value = val ?? ''; };
+    v('m-name', x.name); v('m-type', x.type); v('m-stage', x.stage); v('m-question', x.question); v('m-unit', x.unit); v('m-dir', x.dir); v('m-window', x.window_days);
+    v('m-def', x.definition); v('m-formula', x.formula); v('m-d0', x.d0); v('m-d7', x.d7); v('m-d30', x.d30);
+  }));
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = $('m-id').value.trim(), name = $('m-name').value.trim();
+    if (!/^[a-z][a-z0-9_]{1,39}$/.test(id) || !name) { show(['mmsg-invalid']); return; }
+    const n = (x) => (x === '' ? null : +x);
+    const all = at.rows('metrics') || [];
+    const prev = all.find((r) => r.id === id);
+    const row = { name, type: $('m-type').value, stage: $('m-stage').value, question: $('m-question').value || null, unit: $('m-unit').value, dir: $('m-dir').value,
+      window_days: n($('m-window').value) ?? 2, definition: $('m-def').value.trim(), formula: $('m-formula').value.trim(),
+      d0: n($('m-d0').value), d7: n($('m-d7').value), d30: n($('m-d30').value),
+      north_star: prev ? !!prev.north_star : false, order: prev ? prev.order : 100 + all.length };
+    try {
+      const db = await claude.use('db');
+      await db.doc(`data/tracker/metrics/${id}`).set(row);
+      show(['mmsg-saved']);
+    } catch (err) { show(['mmsg-denied']); }
+  });
+})();
+</script>
+
+</div>
+</body>
+</html>
