@@ -65,6 +65,12 @@
   new MutationObserver(() => redraw()).observe(document.documentElement, { attributes: true, subtree: true, attributeFilter: ['hidden'] });
   let rt = null; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(redraw, 150); });
   Promise.all(Object.entries(DATASETS).map(([id, url]) => fetch(url, { cache: 'no-cache' }).then((r) => r.json()).then((j) => { raw[id] = rowsOf(j); if (j && j.meta) raw[id + '__meta'] = j.meta; }).catch((e) => { console.error(url, e); raw[id] = []; })))
-    .then(() => { loaded = true; const m = (raw.release_metrics__meta || []).find((x) => x.label === 'Data as of'); document.querySelectorAll('[data-asof]').forEach((n) => { n.textContent = m ? m.value : '—'; }); redraw(); });
+    .then(() => { loaded = true; const m = (raw.release_metrics__meta || []).find((x) => x.label === 'Data as of'); const fmt = (v) => { const x = /^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}):(\d{2}))?/.exec(v || ''); if (!x) return v || '—'; const dt = new Date(Date.UTC(+x[1], +x[2] - 1, +x[3])); const day = dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).replace(/,/g, ''); return x[4] ? day + ', ' + x[4] + ':' + x[5] + ' IST' : day; };
+      document.querySelectorAll('[data-asof]').forEach((n) => { n.textContent = m ? fmt(m.value) : '—'; });
+      const last = (raw.release_metrics || []).reduce((a, r) => (r.d > a ? r.d : a), '');
+      document.querySelectorAll('[data-lastday]').forEach((n) => { n.textContent = last ? fmt(last) : '—'; });
+      const ageH = m ? (Date.now() - Date.parse(m.value.slice(0, 16).replace(' ', 'T') + ':00+05:30')) / 36e5 : 99;
+      document.querySelectorAll('[data-fresh]').forEach((n) => { n.classList.toggle('stale', !(ageH < 30)); n.parentElement.title = ageH < 30 ? 'Refreshed in the last 30 hours' : 'Not refreshed in the last 30 hours'; });
+      redraw(); });
   document.addEventListener('DOMContentLoaded', redraw);
 })();

@@ -33,6 +33,10 @@ img, svg { max-width: 100%; }
 html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); font: 14px/1.45 var(--font-anthropic-sans); }
 #dash-root { max-width: 1320px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); }
 .dash-select { font: inherit; font-size: 14px; color: var(--color-fg); background-color: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: 8px; padding: 6px 30px 6px 10px; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; max-width: 100%; }
+.site-status { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; font-size: 12px; color: var(--color-fg-muted); padding: 8px 12px; margin: 14px 0 4px; border: 1px solid var(--color-border-line); border-radius: 8px; background: var(--color-panel); }
+.site-status b { color: var(--color-fg); font-weight: 600; font-variant-numeric: tabular-nums; }
+.site-status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--color-ok); margin-right: 6px; vertical-align: middle; }
+.site-status .dot.stale { background: var(--color-warn); }
 .site-bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; font-size: 12px; color: var(--color-fg-muted); margin-bottom: 12px; }
 #tab-manage, #manage { display: none !important; }
 </style>
@@ -41,7 +45,6 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
 </head>
 <body>
 <div id="dash-root">
-<div class="site-bar"><span>Read-only copy, refreshed daily at 03:00 IST · data as of <b data-asof>—</b></span><span>Edit releases and targets in the repo (framework/store) or the claude.ai dashboard</span></div>
 <style>
 .at { display: grid; gap: var(--cds-gap-xl); font-family: var(--font-anthropic-sans); color: var(--color-fg); }
 .at h1 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0; text-wrap: balance; }
@@ -225,6 +228,12 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
     <button type="button" role="tab" id="tab-framework" aria-controls="framework" aria-selected="false">Framework</button>
     <button type="button" role="tab" id="tab-manage" aria-controls="manage" aria-selected="false">Manage</button>
   </nav>
+  <div class="site-status" role="status">
+    <span><span class="dot" data-fresh aria-hidden="true"></span>Data updated <b data-asof>—</b></span>
+    <span>Latest data day <b data-lastday>—</b></span>
+    <span>Refreshes daily at 3:00 AM IST (retries at 3:30 and 4:00 if needed)</span>
+  </div>
+
 
   <section class="tab" id="releases" role="tabpanel" aria-labelledby="tab-releases">
     <p id="takeaway" class="muted"><b data-draw="tk-count">—</b> releases tracked against <b data-draw="tk-metrics">—</b> catalog metrics. <span data-draw="tk-below">—</span> Open any card to see that release on its own.</p>
