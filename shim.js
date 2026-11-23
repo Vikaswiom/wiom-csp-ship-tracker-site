@@ -34,7 +34,7 @@
   let pending = false;
   function redraw() {
     if (pending) return; pending = true;
-    requestAnimationFrame(() => {
+    setTimeout(() => {
       pending = false;
       for (const f of onDatas) { try { f(); } catch (e) { console.error(e); } }
       for (const d of draws) {
@@ -46,7 +46,7 @@
           } catch (e) { console.error('draw', d.name, e); }
         });
       }
-    });
+    }, 0);
   }
   const dash = {
     data, calc: (id, o) => { calcs[id] = o; },
