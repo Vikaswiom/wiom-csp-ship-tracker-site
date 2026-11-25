@@ -70,7 +70,7 @@
       const last = (raw.release_metrics || []).reduce((a, r) => (r.d > a ? r.d : a), '');
       document.querySelectorAll('[data-lastday]').forEach((n) => { n.textContent = last ? fmt(last) : '—'; });
       const ageH = m ? (Date.now() - Date.parse(m.value.slice(0, 16).replace(' ', 'T') + ':00+05:30')) / 36e5 : 99;
-      document.querySelectorAll('[data-fresh]').forEach((n) => { n.classList.toggle('stale', !(ageH < 30)); n.parentElement.title = ageH < 30 ? 'Refreshed in the last 30 hours' : 'Not refreshed in the last 30 hours'; });
+      document.querySelectorAll('[data-fresh]').forEach((n) => { n.classList.toggle('stale', !(ageH < 12)); n.parentElement.title = ageH < 12 ? 'Refreshed in the last 12 hours' : 'Not refreshed in the last 12 hours'; });
       redraw(); });
   document.addEventListener('DOMContentLoaded', redraw);
 })();
